@@ -1,0 +1,11 @@
+[phases.setup]
+aptPkgs = ["g++"]
+
+[phases.install]
+cmds = ["pip install -r server/requirements.txt"]
+
+[phases.build]
+cmds = ["cd backend/src && g++ -std=c++17 -O2 -o vec main.cpp lexer.cpp parser.cpp semantic.cpp irgen.cpp optimizer.cpp codegen.cpp"]
+
+[start]
+cmd = "python server/server.py"
