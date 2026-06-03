@@ -24,8 +24,10 @@ CORS(app, origins=ALLOWED_ORIGINS)
 # Path to your compiled vec.exe
 COMPILER_PATH = os.path.join(
     os.path.dirname(__file__),
-    '..', 'backend', 'src', 'vec.exe'
+    '..', 'backend', 'src', 'vec'
 )
+if os.name == "nt":
+    COMPILER_PATH +=".exe"
 DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
 
 SQL_CREATE_USERS = """
@@ -777,4 +779,8 @@ if __name__ == '__main__':
     print("=" * 50)
     # ── Fix 5: debug mode via env variable (never hardcode True) ───
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(port=5000, debug=debug_mode)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT",5000)),
+        debug=debug_mode
+    )
