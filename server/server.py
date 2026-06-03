@@ -775,7 +775,7 @@ if __name__ == '__main__':
     print(f"  Compiler found: {os.path.exists(COMPILER_PATH)}")
     print(f"  Database path : {DB_PATH}")
     print(f"  Allowed origins: {ALLOWED_ORIGINS}")
-    print(f"  Server running: http://localhost:5000")
+    print(f"  Server running: https://vec-production-e1fe.up.railway.app")
     print("=" * 50)
     # ── Fix 5: debug mode via env variable (never hardcode True) ───
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
