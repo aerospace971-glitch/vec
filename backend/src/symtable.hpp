@@ -44,15 +44,19 @@ struct Symbol {
     int         col;
     bool        isUsed;
     bool        isInitialized;
+    bool        isForwardDecl;  // declared without body
+    std::string paramTypes;     // comma-separated param types (functions only)
+    std::string mangledName;    // simplified GCC-style mangled name
 
     Symbol(std::string n, std::string t, SymbolKind k,
            int scope, int l, int c)
         : name(std::move(n)), type(std::move(t)), kind(k),
           scopeLevel(scope), line(l), col(c),
-          isUsed(false), isInitialized(false) {}
+          isUsed(false), isInitialized(false), isForwardDecl(false) {}
 
     std::string toJSON() const {
-        return "{"
+        std::string out =
+            "{"
             "\"name\": \""          + escape(name)              + "\", "
             "\"type\": \""          + escape(type)              + "\", "
             "\"kind\": \""          + symbolKindName(kind)      + "\", "
@@ -60,11 +64,17 @@ struct Symbol {
             "\"line\": "            + std::to_string(line)      + ", "
             "\"col\": "             + std::to_string(col)       + ", "
             "\"isUsed\": "          + (isUsed        ? "true" : "false") + ", "
-            "\"isInitialized\": "   + (isInitialized ? "true" : "false") +
-            "}";
+            "\"isInitialized\": "   + (isInitialized ? "true" : "false");
+        if (!paramTypes.empty())
+            out += ", \"paramTypes\": \"" + escape(paramTypes) + "\"";
+        if (!mangledName.empty())
+            out += ", \"mangledName\": \"" + escape(mangledName) + "\"";
+        if (isForwardDecl)
+            out += ", \"isForwardDecl\": true";
+        out += "}";
+        return out;
     }
 
-private:
     static std::string escape(const std::string& s) {
         std::string out;
         for (char c : s) {
@@ -87,14 +97,40 @@ struct Scope {
         : name(std::move(n)), level(lvl), parent(p) {}
 
     bool declare(const Symbol& sym) {
-        if (symbols.count(sym.name)) return false; // already declared
+        if (sym.kind == SymbolKind::FUNCTION) {
+            // Functions keyed as name#paramTypes to support overloading
+            std::string key = sym.name + "#" + sym.paramTypes;
+            auto it = symbols.find(key);
+            if (it != symbols.end()) {
+                // Allow forward decl → definition promotion
+                if (it->second.isForwardDecl && !sym.isForwardDecl) {
+                    it->second.isForwardDecl  = false;
+                    it->second.isInitialized  = true;
+                    it->second.mangledName     = sym.mangledName;
+                    return true;
+                }
+                return false; // true duplicate
+            }
+            symbols.emplace(key, sym);
+            return true;
+        }
+        if (symbols.count(sym.name)) return false;
         symbols.emplace(sym.name, sym);
         return true;
     }
 
     Symbol* lookup(const std::string& name) {
+        // Direct key (non-function or known overload key)
         auto it = symbols.find(name);
         if (it != symbols.end()) return &it->second;
+        // Scan for function overload prefix
+        for (auto& [key, sym] : symbols) {
+            if (sym.kind == SymbolKind::FUNCTION) {
+                size_t h = key.find('#');
+                if (h != std::string::npos && key.substr(0, h) == name)
+                    return &sym;
+            }
+        }
         if (parent) return parent->lookup(name);
         return nullptr;
     }
@@ -102,6 +138,13 @@ struct Scope {
     Symbol* lookupLocal(const std::string& name) {
         auto it = symbols.find(name);
         if (it != symbols.end()) return &it->second;
+        for (auto& [key, sym] : symbols) {
+            if (sym.kind == SymbolKind::FUNCTION) {
+                size_t h = key.find('#');
+                if (h != std::string::npos && key.substr(0, h) == name)
+                    return &sym;
+            }
+        }
         return nullptr;
     }
 };
@@ -147,6 +190,15 @@ public:
 
     Symbol* lookupLocal(const std::string& name) {
         return current_->lookupLocal(name);
+    }
+
+    Symbol* lookupInScope(const std::string& scopeName,
+                          const std::string& symName) {
+        for (auto* scope : allScopes_) {
+            if (scope->name == scopeName)
+                return scope->lookupLocal(symName);
+        }
+        return nullptr;
     }
 
     int currentLevel() const { return current_->level; }

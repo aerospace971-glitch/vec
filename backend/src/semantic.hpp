@@ -30,6 +30,8 @@ public:
 private:
     SymbolTable               table_;
     std::vector<SemanticError> errors_;
+    std::string               currentClass_;
+    std::string               currentFuncReturn_;
 
     // ── Error / warning helpers ────────────────────────────
     void addError  (const std::string& msg, int line, int col);

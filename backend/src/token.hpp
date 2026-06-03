@@ -57,6 +57,7 @@ enum class TokenType {
     KW_ABSTRACT,            // abstract
     KW_FRIEND,              // friend
     KW_THIS,                // this
+    KW_OPERATOR,            // operator
 
     // ── Memory keywords ───────────────────────────────────
     KW_NEW,                 // new
@@ -236,6 +237,7 @@ inline std::string tokenTypeName(TokenType t) {
         case TokenType::KW_FINAL:            return "KW_FINAL";
         case TokenType::KW_FRIEND:           return "KW_FRIEND";
         case TokenType::KW_THIS:             return "KW_THIS";
+        case TokenType::KW_OPERATOR:         return "KW_OPERATOR";
 
         // Memory
         case TokenType::KW_NEW:              return "KW_NEW";
@@ -390,7 +392,7 @@ inline std::string tokenCategory(TokenType t) {
         case TokenType::KW_PUBLIC: case TokenType::KW_PRIVATE:
         case TokenType::KW_PROTECTED: case TokenType::KW_VIRTUAL:
         case TokenType::KW_OVERRIDE: case TokenType::KW_FRIEND:
-        case TokenType::KW_THIS:                               return "OOP";
+        case TokenType::KW_THIS:   case TokenType::KW_OPERATOR: return "OOP";
 
         case TokenType::KW_NEW:    case TokenType::KW_DELETE:
         case TokenType::KW_SIZEOF: case TokenType::KW_NULLPTR: return "MEMORY";

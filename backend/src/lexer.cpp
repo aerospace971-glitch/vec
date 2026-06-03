@@ -47,6 +47,7 @@ static const std::unordered_map<std::string, TokenType> KEYWORDS = {
     {"final",            TokenType::KW_FINAL},
     {"friend",           TokenType::KW_FRIEND},
     {"this",             TokenType::KW_THIS},
+    {"operator",         TokenType::KW_OPERATOR},
 
     // Memory
     {"new",              TokenType::KW_NEW},
@@ -197,6 +198,18 @@ Token Lexer::readNumber() {
         val += advance(); // b
         while (!isAtEnd() && (current() == '0' || current() == '1'
                                || current() == '\''))
+            val += advance();
+        return makeToken(type, val, startLine, startCol);
+    }
+
+    // Octal: 0[0-7]+
+    if (current() == '0' && peek() >= '0' && peek() <= '7') {
+        val += advance(); // 0
+        while (!isAtEnd() && ((current() >= '0' && current() <= '7') || current() == '\''))
+            val += advance();
+        // Optional suffix u/U/l/L
+        if (!isAtEnd() && (current() == 'u' || current() == 'U' ||
+                           current() == 'l' || current() == 'L'))
             val += advance();
         return makeToken(type, val, startLine, startCol);
     }
@@ -541,6 +554,24 @@ std::vector<Token> Lexer::tokenize() {
     tokens_.clear();
     errors_.clear();
 
+    // Phase 0: strip line continuations (\<newline> → nothing)
+    {
+        std::string spliced;
+        spliced.reserve(source_.size());
+        for (size_t i = 0; i < source_.size(); i++) {
+            if (source_[i] == '\\' && i + 1 < source_.size() && source_[i+1] == '\n') {
+                i++; // skip \ and \n
+            } else if (source_[i] == '\\' && i + 2 < source_.size() &&
+                       source_[i+1] == '\r' && source_[i+2] == '\n') {
+                i += 2; // skip \ \r \n (Windows CRLF)
+            } else {
+                spliced += source_[i];
+            }
+        }
+        source_ = spliced;
+        pos_ = 0; line_ = 1; col_ = 1;
+    }
+
     while (!isAtEnd()) {
 
         // Skip whitespace
@@ -568,6 +599,36 @@ std::vector<Token> Lexer::tokenize() {
         // ── Raw string: R"(...)" ──────────────────────────
         if (c == 'R' && peek() == '"') {
             tokens_.push_back(readRawString()); continue;
+        }
+
+        // ── Unicode string/char prefixes ──────────────────
+        // u8"..." checked before u"..."
+        if (c == 'u' && peek() == '8' && peekNext() == '"') {
+            int sl = line_, sc = col_; advance(); advance();
+            Token t = readString();
+            tokens_.push_back(makeToken(t.type, "u8" + t.value, sl, sc));
+            continue;
+        }
+        if ((c == 'L' || c == 'u' || c == 'U') && peek() == '"') {
+            int sl = line_, sc = col_;
+            std::string pfx(1, advance());
+            Token t = readString();
+            tokens_.push_back(makeToken(t.type, pfx + t.value, sl, sc));
+            continue;
+        }
+        if ((c == 'L' || c == 'u' || c == 'U') && peek() == 'R' && peekNext() == '"') {
+            int sl = line_, sc = col_;
+            std::string pfx(1, advance());
+            Token t = readRawString();
+            tokens_.push_back(makeToken(t.type, pfx + t.value, sl, sc));
+            continue;
+        }
+        if ((c == 'L' || c == 'u' || c == 'U') && peek() == '\'') {
+            int sl = line_, sc = col_;
+            std::string pfx(1, advance());
+            Token t = readChar();
+            tokens_.push_back(makeToken(t.type, pfx + t.value, sl, sc));
+            continue;
         }
 
         // ── Identifiers / keywords ────────────────────────

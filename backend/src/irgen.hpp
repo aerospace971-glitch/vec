@@ -2,6 +2,8 @@
 #include "ast.hpp"
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 // ── TAC instruction types ──────────────────────────────────
 enum class TACOp {
@@ -45,9 +47,17 @@ enum class TACOp {
 
     // I/O
     PRINT,      // print arg1
+    READ,       // read into result (cin >> var)
 
     // Cast
     CAST,       // result = (type) arg1
+
+    // Exception
+    THROW,      // throw value
+
+    // Heap
+    ALLOC,      // result = new Type
+    FREE,       // delete ptr
 
     // Special
     NOP,        // no operation
@@ -94,7 +104,11 @@ inline std::string tacOpName(TACOp op) {
         case TACOp::ADDR_OF:    return "addr_of";
         case TACOp::DEREF:      return "deref";
         case TACOp::PRINT:      return "print";
+        case TACOp::READ:       return "read";
         case TACOp::CAST:       return "cast";
+        case TACOp::THROW:      return "throw";
+        case TACOp::ALLOC:      return "alloc";
+        case TACOp::FREE:       return "free";
         case TACOp::NOP:        return "nop";
         default:                return "unknown";
     }
@@ -154,12 +168,24 @@ struct TACInstr {
                 return result + " = " + arg1;
             case TACOp::PRINT:
                 return "print " + arg1;
+            case TACOp::READ:
+                return "read " + result;
+            case TACOp::THROW:
+                return "throw " + arg1;
+            case TACOp::ALLOC:
+                return result + " = new " + arg1;
+            case TACOp::FREE:
+                return "delete " + arg1;
             case TACOp::NOP:
                 return "nop";
             case TACOp::ARRAY_GET:
                 return result + " = " + arg1 + "[" + arg2 + "]";
             case TACOp::ARRAY_SET:
                 return arg1 + "[" + arg2 + "] = " + result;
+            case TACOp::MEMBER_GET:
+                return result + " = " + arg1 + "." + arg2;
+            case TACOp::MEMBER_SET:
+                return arg1 + "." + arg2 + " = " + result;
             case TACOp::ADDR_OF:
                 return result + " = &" + arg1;
             case TACOp::DEREF:
@@ -200,6 +226,35 @@ struct TACInstr {
     }
 };
 
+// ── Basic block (CFG node) ─────────────────────────────────
+struct BasicBlock {
+    int              id;
+    std::string      label;
+    std::string      func;
+    std::vector<int> instrIds;
+    std::vector<int> succs;
+    std::vector<int> preds;
+
+    std::string toJSON() const {
+        auto intList = [](const std::vector<int>& v) {
+            std::string s = "[";
+            for (size_t i = 0; i < v.size(); i++) {
+                s += std::to_string(v[i]);
+                if (i + 1 < v.size()) s += ",";
+            }
+            return s + "]";
+        };
+        return "{"
+            "\"id\":"        + std::to_string(id) + ","
+            "\"label\":\""   + label              + "\","
+            "\"func\":\""    + func               + "\","
+            "\"instrIds\":"  + intList(instrIds)  + ","
+            "\"succs\":"     + intList(succs)     + ","
+            "\"preds\":"     + intList(preds)     +
+            "}";
+    }
+};
+
 // ── IR Generator ───────────────────────────────────────────
 class IRGenerator {
 public:
@@ -209,18 +264,25 @@ public:
     void generate(ASTNodePtr root);
 
     // Results
-    const std::vector<TACInstr>& instructions() const {
-        return instrs_;
-    }
+    const std::vector<TACInstr>&   instructions() const { return instrs_; }
+    const std::vector<BasicBlock>& basicBlocks()  const { return blocks_; }
 
     // JSON output
     std::string toJSON() const;
 
 private:
-    std::vector<TACInstr> instrs_;
-    int                   tempCount_;
-    int                   labelCount_;
-    int                   instrCount_;
+    std::vector<TACInstr>   instrs_;
+    std::vector<BasicBlock> blocks_;
+    int                     tempCount_;
+    int                     labelCount_;
+    int                     instrCount_;
+
+    // break/continue label stacks
+    std::vector<std::string> breakStack_;
+    std::vector<std::string> continueStack_;
+
+    // constexpr folding map: varName → literal value
+    std::unordered_map<std::string, std::string> constexprMap_;
 
     // ── Helpers ───────────────────────────────────────────
     std::string newTemp();
@@ -257,5 +319,6 @@ private:
     std::string genTernaryExpr  (ASTNodePtr node);
     std::string genLiteral      (ASTNodePtr node);
 
-    TACOp       opFromString    (const std::string& op);
+    TACOp       opFromString       (const std::string& op);
+    void        computeBasicBlocks ();
 };

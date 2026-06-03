@@ -126,10 +126,11 @@ bool Parser::isTypeName() const {
             return true;
         case TokenType::IDENTIFIER:
             // Could be a user-defined type
-            return peek().type == TokenType::IDENTIFIER ||
-                   peek().type == TokenType::OP_STAR    ||
-                   peek().type == TokenType::OP_BIT_AND ||
-                   peek().type == TokenType::OP_SCOPE;
+            return peek().type == TokenType::IDENTIFIER  ||
+                   peek().type == TokenType::OP_STAR     ||
+                   peek().type == TokenType::OP_BIT_AND  ||
+                   peek().type == TokenType::OP_SCOPE    ||
+                   peek().type == TokenType::KW_OPERATOR; // Vec2 operator+()
         default:
             return false;
     }
@@ -336,14 +337,21 @@ ASTNodePtr Parser::parseClassDecl() {
     if (check(TokenType::IDENTIFIER))
         name = advance().value;
 
-    // Inheritance: class Foo : public Bar
+    // Inheritance: class Foo : public Bar, protected Baz (multiple inheritance)
     std::string base;
     if (match(TokenType::OP_COLON)) {
-        matchAny({ TokenType::KW_PUBLIC,
-                   TokenType::KW_PRIVATE,
-                   TokenType::KW_PROTECTED });
-        if (check(TokenType::IDENTIFIER))
-            base = advance().value;
+        do {
+            matchAny({ TokenType::KW_PUBLIC, TokenType::KW_PRIVATE,
+                       TokenType::KW_PROTECTED, TokenType::KW_VIRTUAL });
+            if (check(TokenType::IDENTIFIER)) {
+                if (!base.empty()) base += ", ";
+                base += advance().value;
+                while (check(TokenType::OP_SCOPE)) {
+                    base += advance().value;
+                    if (check(TokenType::IDENTIFIER)) base += advance().value;
+                }
+            }
+        } while (match(TokenType::COMMA) && !check(TokenType::LBRACE) && !isAtEnd());
     }
 
     auto node = std::make_shared<ASTNode>(
@@ -363,7 +371,35 @@ ASTNodePtr Parser::parseClassDecl() {
                 continue;
             }
             try {
-                auto member = parseDeclaration();
+                ASTNodePtr member;
+                // Constructor detection: ClassName(params) { body } or : initList {}
+                if (check(TokenType::IDENTIFIER) &&
+                    peek().type == TokenType::LPAREN) {
+                    size_t savedPos = pos_;
+                    int cl = current().line, cc = current().col;
+                    std::string ctorName = current().value;
+                    advance(); // consume IDENTIFIER
+                    advance(); // consume (
+                    int depth = 1;
+                    while (!isAtEnd() && depth > 0) {
+                        if      (check(TokenType::LPAREN))  depth++;
+                        else if (check(TokenType::RPAREN))  depth--;
+                        advance();
+                    }
+                    bool isCtor = check(TokenType::LBRACE)   ||
+                                  check(TokenType::OP_COLON) ||
+                                  check(TokenType::KW_CONST) ||
+                                  check(TokenType::SEMICOLON);
+                    pos_ = savedPos;
+                    if (isCtor) {
+                        advance(); // skip constructor name; parseFunctionDecl expects to start at (
+                        member = parseFunctionDecl(ctorName, ctorName, cl, cc);
+                    } else {
+                        member = parseDeclaration();
+                    }
+                } else {
+                    member = parseDeclaration();
+                }
                 if (member) node->addChild(member);
             } catch (...) { synchronize(); }
         }
@@ -464,7 +500,48 @@ ASTNodePtr Parser::parseDeclaration() {
         return parseFunctionDecl(typeName, name, l, c);
     }
 
+    // Structured bindings: auto [a, b, c] = expr;
+    if (check(TokenType::LBRACKET)) {
+        advance(); // consume '['
+        std::string names;
+        while (!isAtEnd() && !check(TokenType::RBRACKET)) {
+            if (check(TokenType::IDENTIFIER)) {
+                if (!names.empty()) names += ", ";
+                names += advance().value;
+            }
+            match(TokenType::COMMA);
+        }
+        expect(TokenType::RBRACKET, "Expected ']' after structured binding names");
+        auto node = std::make_shared<ASTNode>(
+            NodeType::VarDecl, "[" + names + "]", typeName, l, c);
+        if (match(TokenType::OP_ASSIGN)) {
+            auto init = parseExpression();
+            if (init) node->addChild(init);
+        }
+        match(TokenType::SEMICOLON);
+        return node;
+    }
+
+    // Operator overloading: operator+, operator==, operator(), etc.
+    if (check(TokenType::KW_OPERATOR)) {
+        advance(); // consume 'operator'
+        std::string opName = "operator";
+        if (check(TokenType::LPAREN) && peek().type == TokenType::RPAREN) {
+            opName += "()"; advance(); advance();
+        } else if (check(TokenType::LBRACKET) && peek().type == TokenType::RBRACKET) {
+            opName += "[]"; advance(); advance();
+        } else {
+            while (!isAtEnd() && !check(TokenType::LPAREN) &&
+                   !check(TokenType::LBRACE) && !check(TokenType::SEMICOLON))
+                opName += advance().value;
+        }
+        return parseFunctionDecl(typeName, opName, l, c);
+    }
+
     if (!check(TokenType::IDENTIFIER)) {
+        // Out-of-class constructor: ReturnType::CtorName or bare CtorName followed by (
+        if (check(TokenType::LPAREN))
+            return parseFunctionDecl(typeName, typeName, l, c);
         addError("Expected identifier after type '" + typeName + "'");
         synchronize();
         return nullptr;
@@ -480,8 +557,42 @@ ASTNodePtr Parser::parseDeclaration() {
     }
 
     // Function declaration
-    if (check(TokenType::LPAREN))
-        return parseFunctionDecl(typeName, name, l, c);
+    if (check(TokenType::LPAREN)) {
+        // Aage dekho — function hai ya constructor-style var init
+        size_t savedPos = pos_;
+        advance(); // consume (
+        int depth = 1;
+        while (!isAtEnd() && depth > 0) {
+            if      (check(TokenType::LPAREN))  depth++;
+            else if (check(TokenType::RPAREN))  depth--;
+            advance();
+        }
+        // Closing ) ke baad kya hai?
+        // Also detect forward decls with primitive return types: void foo(int h);
+        static const std::vector<std::string> primTypes = {
+            "void","int","float","double","char","bool","long","short","auto","string"
+        };
+        bool isPrimReturn = false;
+        for (auto& p : primTypes)
+            if (typeName.find(p) != std::string::npos) { isPrimReturn = true; break; }
+
+        bool isFunc = check(TokenType::LBRACE)       ||  // { body }
+                    check(TokenType::KW_CONST)   ||  // const method
+                    check(TokenType::OP_COLON)   ||  // initializer list :
+                    check(TokenType::KW_NOEXCEPT)||  // noexcept spec
+                    check(TokenType::KW_OVERRIDE)||  // override
+                    check(TokenType::KW_FINAL)   ||  // final
+                    check(TokenType::OP_ASSIGN)  ||  // pure virtual = 0
+                    (check(TokenType::SEMICOLON) &&
+                     (typeName == name || isPrimReturn)); // forward decl
+
+        pos_ = savedPos; // restore
+
+        if (isFunc)
+            return parseFunctionDecl(typeName, name, l, c);
+        else
+            return parseVarDecl(typeName, name, l, c);
+    }
 
     // Variable declaration
     return parseVarDecl(typeName, name, l, c);
@@ -514,6 +625,36 @@ ASTNodePtr Parser::parseFunctionDecl(const std::string& retType,
         if (check(TokenType::INTEGER_LITERAL)) advance();
     }
 
+    // Constructor initializer list: : mem1(val1), mem2(val2), ...
+    if (check(TokenType::OP_COLON)) {
+        advance(); // consume ':'
+        auto initList = std::make_shared<ASTNode>(
+            NodeType::CompoundStmt, "init_list", "", 0, 0);
+        do {
+            if (isAtEnd() || check(TokenType::LBRACE)) break;
+            if (check(TokenType::IDENTIFIER)) {
+                int ml = current().line, mc = current().col;
+                std::string memberName = advance().value;
+                if (check(TokenType::LPAREN)) {
+                    advance(); // '('
+                    ASTNodePtr val;
+                    if (!check(TokenType::RPAREN))
+                        val = parseExpression();
+                    expect(TokenType::RPAREN, "Expected ')' in member initializer");
+                    auto assign = std::make_shared<ASTNode>(
+                        NodeType::AssignExpr, "=", "", ml, mc);
+                    assign->addChild(std::make_shared<ASTNode>(
+                        NodeType::Identifier, memberName, "", ml, mc));
+                    if (val) assign->addChild(val);
+                    initList->addChild(assign);
+                }
+            } else {
+                advance(); // skip unexpected token
+            }
+        } while (match(TokenType::COMMA));
+        node->addChild(initList);
+    }
+
     // Body or forward declaration
     if (check(TokenType::LBRACE)) {
         auto body = parseCompoundStmt();
@@ -543,13 +684,14 @@ ASTNodePtr Parser::parseParamList() {
     }
 
     do {
-        if (check(TokenType::OP_ELLIPSIS)) {
-            advance(); // variadic ...
-            break;
-        }
+        if (check(TokenType::OP_ELLIPSIS)) { advance(); break; }
         if (isTypeName()) {
             auto param = parseParam();
-            if (param) node->addChild(param);
+            if (param) {
+                // DEBUG — console pe dekho
+                // std::cerr << "PARAM: " << param->value << " type=" << param->dataType << "\n";
+                node->addChild(param);
+            }
         }
     } while (match(TokenType::COMMA) && !isAtEnd());
 
@@ -604,12 +746,17 @@ ASTNodePtr Parser::parseVarDecl(const std::string& typeName,
         auto init = parseInitList();
         if (init) node->addChild(init);
     } else if (check(TokenType::LPAREN)) {
-        advance();
+        advance(); // consume (
+        auto initNode = std::make_shared<ASTNode>(
+            NodeType::CallExpr, "ctor", "", line, col);  // ← l,c ki jagah line,col
         if (!check(TokenType::RPAREN)) {
-            auto init = parseExpression();
-            if (init) node->addChild(init);
+            do {
+                auto arg = parseExpression();
+                if (arg) initNode->addChild(arg);
+            } while (match(TokenType::COMMA) && !isAtEnd());
         }
         expect(TokenType::RPAREN, "Expected ')' in initializer");
+        node->addChild(initNode);
     }
 
     // Multiple declarations: int a = 1, b = 2;
@@ -641,12 +788,18 @@ ASTNodePtr Parser::parseStatement() {
         case TokenType::KW_RETURN:    return parseReturnStmt();
         case TokenType::KW_BREAK:     return parseBreakStmt();
         case TokenType::KW_CONTINUE:  return parseContinueStmt();
+        case TokenType::KW_GOTO:      return parseGotoStmt();
         case TokenType::KW_TRY:       return parseTryStmt();
         case TokenType::KW_THROW:     return parseThrowStmt();
         case TokenType::SEMICOLON:
             advance();
             return std::make_shared<ASTNode>(NodeType::NullStmt, ";");
         default:
+            // Label: IDENTIFIER followed by ':'
+            if (check(TokenType::IDENTIFIER) &&
+                pos_ + 1 < tokens_.size() &&
+                tokens_[pos_ + 1].type == TokenType::OP_COLON)
+                return parseLabelStmt();
             if (isTypeName()) return parseDeclaration();
             return parseExprStmt();
     }
@@ -673,9 +826,10 @@ ASTNodePtr Parser::parseCompoundStmt() {
 ASTNodePtr Parser::parseIfStmt() {
     int l = current().line, c = current().col;
     advance(); // consume 'if'
+    bool isConstexpr = match(TokenType::KW_CONSTEXPR);
 
     auto node = std::make_shared<ASTNode>(
-        NodeType::IfStmt, "if", "", l, c);
+        NodeType::IfStmt, isConstexpr ? "if constexpr" : "if", "", l, c);
 
     expect(TokenType::LPAREN, "Expected '(' after if");
     auto cond = parseExpression();
@@ -701,6 +855,38 @@ ASTNodePtr Parser::parseForStmt() {
         NodeType::ForStmt, "for", "", l, c);
 
     expect(TokenType::LPAREN, "Expected '(' after for");
+
+    // Detect range-based for: for (type name : collection)
+    {
+        size_t savedPos = pos_;
+        bool isRangeFor = false;
+        int depth = 0;
+        while (!isAtEnd()) {
+            if      (check(TokenType::LPAREN))    depth++;
+            else if (check(TokenType::RPAREN))    { if (depth-- == 0) break; }
+            else if (check(TokenType::SEMICOLON)  && depth == 0) break;
+            else if (check(TokenType::OP_COLON)   && depth == 0) { isRangeFor = true; break; }
+            advance();
+        }
+        pos_ = savedPos;
+
+        if (isRangeFor) {
+            int vl = current().line, vc = current().col;
+            std::string varType = isTypeName() ? parseTypeName() : "";
+            std::string varName;
+            if (check(TokenType::IDENTIFIER)) varName = advance().value;
+            auto varDecl = std::make_shared<ASTNode>(NodeType::VarDecl, varName, varType, vl, vc);
+            node->addChild(varDecl);
+            expect(TokenType::OP_COLON, "Expected ':' in range-based for");
+            auto collection = parseExpression();
+            if (collection) node->addChild(collection);
+            expect(TokenType::RPAREN, "Expected ')' after range-based for");
+            auto body = parseStatement();
+            if (body) node->addChild(body);
+            node->value = "range-for";
+            return node;
+        }
+    }
 
     // Init
     if (!check(TokenType::SEMICOLON)) {
@@ -854,6 +1040,25 @@ ASTNodePtr Parser::parseContinueStmt() {
     advance();
     match(TokenType::SEMICOLON);
     return std::make_shared<ASTNode>(NodeType::ContinueStmt, "continue", "", l, c);
+}
+
+ASTNodePtr Parser::parseGotoStmt() {
+    int l = current().line, c = current().col;
+    advance(); // consume 'goto'
+    std::string label;
+    if (check(TokenType::IDENTIFIER)) label = advance().value;
+    match(TokenType::SEMICOLON);
+    return std::make_shared<ASTNode>(NodeType::GotoStmt, label, "", l, c);
+}
+
+ASTNodePtr Parser::parseLabelStmt() {
+    int l = current().line, c = current().col;
+    std::string name = advance().value; // identifier
+    advance(); // consume ':'
+    auto node = std::make_shared<ASTNode>(NodeType::LabelStmt, name, "", l, c);
+    if (!isAtEnd() && !check(TokenType::RBRACE))
+        if (auto stmt = parseStatement()) node->addChild(stmt);
+    return node;
 }
 
 ASTNodePtr Parser::parseTryStmt() {
@@ -1279,6 +1484,47 @@ ASTNodePtr Parser::parseIndexExpr(ASTNodePtr base) {
     return node;
 }
 
+ASTNodePtr Parser::parseLambda() {
+    int l = current().line, c = current().col;
+    advance(); // consume '['
+
+    // Capture list: [&], [=], [&x, y], etc.
+    std::string capture;
+    while (!isAtEnd() && !check(TokenType::RBRACKET))
+        capture += advance().value;
+    expect(TokenType::RBRACKET, "Expected ']' after lambda capture");
+
+    auto node = std::make_shared<ASTNode>(
+        NodeType::LambdaExpr, capture, "", l, c);
+
+    // Optional parameter list: (params)
+    if (check(TokenType::LPAREN)) {
+        advance(); // consume '('
+        auto params = parseParamList();
+        if (params) node->addChild(params);
+        expect(TokenType::RPAREN, "Expected ')' after lambda params");
+    }
+
+    // Optional specifiers: mutable, constexpr, noexcept
+    while (checkAny({ TokenType::KW_MUTABLE, TokenType::KW_CONSTEXPR,
+                      TokenType::KW_NOEXCEPT }))
+        advance();
+
+    // Optional trailing return type: -> type
+    if (check(TokenType::OP_ARROW)) {
+        advance(); // consume '->'
+        parseTypeName(); // consume return type, store as dataType
+    }
+
+    // Body
+    if (check(TokenType::LBRACE)) {
+        auto body = parseCompoundStmt();
+        if (body) node->addChild(body);
+    }
+
+    return node;
+}
+
 ASTNodePtr Parser::parseInitList() {
     int l = current().line, c = current().col;
     advance(); // consume '{'
@@ -1371,6 +1617,11 @@ ASTNodePtr Parser::parsePrimary() {
     // Init list: {1, 2, 3}
     if (check(TokenType::LBRACE)) {
         return parseInitList();
+    }
+
+    // Lambda: [capture](params) { body }
+    if (check(TokenType::LBRACKET)) {
+        return parseLambda();
     }
 
     // Unknown — skip and report

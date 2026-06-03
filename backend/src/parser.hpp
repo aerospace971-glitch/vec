@@ -85,6 +85,8 @@ private:
     ASTNodePtr  parseReturnStmt();
     ASTNodePtr  parseBreakStmt();
     ASTNodePtr  parseContinueStmt();
+    ASTNodePtr  parseGotoStmt();
+    ASTNodePtr  parseLabelStmt();
     ASTNodePtr  parseTryStmt();
     ASTNodePtr  parseThrowStmt();
     ASTNodePtr  parseExprStmt();
@@ -111,4 +113,5 @@ private:
     ASTNodePtr  parseCallExpr(ASTNodePtr callee);
     ASTNodePtr  parseIndexExpr(ASTNodePtr base);
     ASTNodePtr  parseInitList();
+    ASTNodePtr  parseLambda();
 };

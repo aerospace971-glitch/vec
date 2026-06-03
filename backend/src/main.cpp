@@ -5,6 +5,8 @@
 #include "parser.hpp"
 #include "semantic.hpp"
 #include "irgen.hpp"
+#include "optimizer.hpp"
+#include "codegen.hpp"
 
 std::string readFile(const std::string& path) {
     std::ifstream file(path);
@@ -83,12 +85,24 @@ int main(int argc, char* argv[]) {
     IRGenerator irgen;
     irgen.generate(ast);
 
+    // ── Phase 5: Optimization ──────────────────────────────
+    Optimizer optimizer;
+    optimizer.optimize(irgen.instructions());
+
+    // ── Phase 6: Code Generation ───────────────────────────
+    CodeGenerator codegen;
+    codegen.generate(optimizer.optimized());
+
     // ── Collect results ────────────────────────────────────
     auto lexErrors  = lexer.errors();
     auto parseErrs  = parser.errors();
     auto semSymbols = semantic.symbolTable().allSymbols();
     auto semErrors  = semantic.errors();
     auto tacInstrs  = irgen.instructions();
+    auto optInstrs  = optimizer.optimized();
+    auto optChanges = optimizer.changes();
+    auto basicBlks  = irgen.basicBlocks();
+    auto asmInstrs  = codegen.instructions();
 
     // ── Build JSON ─────────────────────────────────────────
     std::ostringstream json;
@@ -172,9 +186,61 @@ int main(int argc, char* argv[]) {
     }
     json << "  ],\n";
 
-    // Placeholders
-    json << "  \"optimized_tac\": null,\n";
-    json << "  \"assembly\":      null,\n";
+    // Basic blocks (CFG)
+    json << "  \"basic_blocks\": [\n";
+    for (size_t i = 0; i < basicBlks.size(); i++) {
+        json << "    " << basicBlks[i].toJSON();
+        if (i + 1 < basicBlks.size()) json << ",";
+        json << "\n";
+    }
+    json << "  ],\n";
+
+    // Optimized TAC
+    json << "  \"optimized_tac\": [\n";
+    for (size_t i = 0; i < optInstrs.size(); i++) {
+        json << "    " << optInstrs[i].toJSON();
+        if (i + 1 < optInstrs.size()) json << ",";
+        json << "\n";
+    }
+    json << "  ],\n";
+
+    // Optimization changes log
+    json << "  \"opt_changes\": [\n";
+    for (size_t i = 0; i < optChanges.size(); i++) {
+        const auto& c = optChanges[i];
+        json << "    {"
+             << "\"instrId\": "  << c.instrId                  << ", "
+             << "\"before\": \"" << escapeJSON(c.before)       << "\", "
+             << "\"after\": \""  << escapeJSON(c.after)        << "\", "
+             << "\"pass\": \""   << escapeJSON(c.pass)         << "\", "
+             << "\"reason\": \"" << escapeJSON(c.reason)       << "\"}";
+        if (i + 1 < optChanges.size()) json << ",";
+        json << "\n";
+    }
+    json << "  ],\n";
+
+    // Opt stats
+    json << "  \"opt_stats\": {"
+         << "\"original\": " << tacInstrs.size() << ", "
+         << "\"optimized\": " << optInstrs.size() << ", "
+         << "\"removed\": "
+         << (tacInstrs.size() > optInstrs.size()
+             ? tacInstrs.size() - optInstrs.size() : 0) << ", "
+         << "\"changes\": " << optChanges.size()
+         << "},\n";
+
+    // Assembly (Code Generation)
+    json << "  \"assembly\": [\n";
+    for (size_t i = 0; i < asmInstrs.size(); i++) {
+        json << "    " << asmInstrs[i].toJSON();
+        if (i + 1 < asmInstrs.size()) json << ",";
+        json << "\n";
+    }
+    json << "  ],\n";
+
+    // Assembly listing
+    json << "  \"assembly_listing\": \""
+         << escapeJSON(codegen.toListing()) << "\",\n";
 
     // Phase status
     json << "  \"phase_status\": {\n";
@@ -182,8 +248,8 @@ int main(int argc, char* argv[]) {
     json << "    \"parse\":    true,\n";
     json << "    \"semantic\": true,\n";
     json << "    \"ir\":       true,\n";
-    json << "    \"opt\":      false,\n";
-    json << "    \"codegen\":  false\n";
+    json << "    \"opt\":      true,\n";
+    json << "    \"codegen\":  true\n";
     json << "  }\n}\n";
 
     std::cout << json.str();

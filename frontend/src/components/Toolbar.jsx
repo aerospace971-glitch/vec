@@ -1,4 +1,4 @@
-export default function Toolbar({ onCompile, onLoadExample, examples, loading }) {
+export default function Toolbar({ onCompile, onLoadExample, examples, loading, disabled }) {
   return (
     <div className="toolbar">
       <select
@@ -20,7 +20,7 @@ export default function Toolbar({ onCompile, onLoadExample, examples, loading })
       <button
         className="compile-btn"
         onClick={onCompile}
-        disabled={loading}
+        disabled={loading || disabled}
       >
         <span className="btn-icon">&#9654;</span>
         {loading ? "Compiling..." : "Compile"}
