@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/compile",       "destination": "https://vec-production-e1fe.up.railway.app/compile" },
+    { "source": "/health",        "destination": "https://vec-production-e1fe.up.railway.app/health" },
+    { "source": "/phases",        "destination": "https://vec-production-e1fe.up.railway.app/phases" },
+    { "source": "/execute",       "destination": "https://vec-production-e1fe.up.railway.app/execute" },
+    { "source": "/auth/:path*",   "destination": "https://vec-production-e1fe.up.railway.app/auth/:path*" },
+    { "source": "/user/:path*",   "destination": "https://vec-production-e1fe.up.railway.app/user/:path*" },
+    { "source": "/vfs/:path*",    "destination": "https://vec-production-e1fe.up.railway.app/vfs/:path*" },
+    { "source": "/(.*)",          "destination": "/index.html" }
+  ]
+}
