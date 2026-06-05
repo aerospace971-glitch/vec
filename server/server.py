@@ -422,27 +422,29 @@ def list_phases():
 
 @app.route('/auth/send-otp', methods=['POST'])
 def auth_send_otp():
-    data = request.get_json() or {}
-    email = (data.get('email') or '').strip().lower()
-    kind = (data.get('kind') or 'email').strip()
-    if not email:
-        return jsonify({'error': 'Missing email.'}), 400
+    try:
+        data = request.get_json() or {}
+        email = (data.get('email') or '').strip().lower()
 
-    code = create_otp(email, kind=kind)
-    subject = 'Your VEC verification code'
-    body = f'Your verification code is: {code}\nIt expires in 5 minutes.'
-    sent = _send_email_smtp(email, subject, body)
-    smtp_enabled = all([
-        os.environ.get('SMTP_HOST'),
-        os.environ.get('SMTP_PORT'),
-        os.environ.get('SMTP_USER'),
-        os.environ.get('SMTP_PASS'),
-    ])
-    if not sent:
-        if smtp_enabled:
-            return jsonify({'error': 'Failed to send OTP email. Check SMTP configuration.'}), 500
-        return jsonify({'sent': False, 'dev_otp': code})
-    return jsonify({'sent': True})
+        print("SEND OTP HIT", flush=True)
+
+        code = create_otp(email, kind='email')
+
+        print("OTP CREATED", flush=True)
+
+        sent = _send_email_smtp(
+            email,
+            "Your VEC verification code",
+            f"Code: {code}"
+        )
+
+        print("SMTP RESULT =", sent, flush=True)
+
+        return jsonify({"sent": sent})
+
+    except Exception as e:
+        print("OTP ROUTE ERROR =", repr(e), flush=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/auth/forgot-password', methods=['POST'])
