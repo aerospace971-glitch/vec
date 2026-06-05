@@ -488,6 +488,8 @@ export default function SourceMap({
     );
   })();
 
+  const isMobileView = typeof window !== "undefined" && window.innerWidth <= 768;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, height: "calc(100vh - 160px)", minHeight: 500, width: "100%" }}>
       <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: "#07101a", borderBottom: "1px solid #172233" }}>
@@ -499,11 +501,41 @@ export default function SourceMap({
         <div style={{ color: "#4a6080", fontFamily: "monospace", fontSize: 10 }}>{network.sourceLines.length} source lines · {network.astNodes.length} AST nodes</div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
-        <div ref={containerRef} style={{ flex: 1, width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+      {/* ── Main split layout: diagram always visible, info panel slides in ── */}
+      <div style={{
+        display: "flex",
+        flexDirection: isMobileView ? "column" : "row",
+        flex: 1,
+        width: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}>
+        {/* Diagram — always full width when no selection, 2fr when info panel open */}
+        <div
+          ref={containerRef}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: isMobileView && detail ? "55%" : "100%",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
           <svg ref={svgRef} style={{ display: "block", width: "100%", height: "100%", background: "transparent" }} />
         </div>
-        <div style={{ width: 280, height: "100%" }}>{detail}</div>
+
+        {/* Info panel — only rendered when a node is selected */}
+        {detail && (
+          <div style={{
+            width: isMobileView ? "100%" : 300,
+            height: isMobileView ? "45%" : "100%",
+            flexShrink: 0,
+            overflowY: "auto",
+            borderTop: isMobileView ? "1px solid #2a3a55" : "none",
+          }}>
+            {detail}
+          </div>
+        )}
       </div>
 
       <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: "#07101a", borderTop: "1px solid #172233", fontSize: 13, color: "#94a3b8" }}>
