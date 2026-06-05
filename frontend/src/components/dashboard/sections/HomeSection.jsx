@@ -1,6 +1,6 @@
 import { loadVFS, loadBuildVFS } from "../../../utils/vfs";
 
-export default function HomeSection({ user, navigate }) {
+export default function HomeSection({ user, navigate, isMobile = false }) {
   const vfs        = user ? loadVFS(user.id) : { folders: [], files: [] };
   const allFiles   = vfs.files   || [];
   const allFolders = vfs.folders || [];
@@ -38,7 +38,7 @@ export default function HomeSection({ user, navigate }) {
       </div>
 
       {STAT_ROWS.map((row, ri) => (
-        <div key={ri} style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px" }}>
+        <div key={ri} style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: "12px" }}>
           {row.map(s => (
             <div key={s.label} style={{ padding: "18px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: `1px solid ${s.color}22`, position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: s.color, opacity: 0.5, borderRadius: "12px 12px 0 0" }} />
