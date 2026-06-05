@@ -136,7 +136,7 @@ export default function OptimizerOverview({
         .opt-overview-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
         .opt-overview-scroll::-webkit-scrollbar-thumb { background:#1e2a3a; border-radius:999px; }
         .opt-overview-diff { grid-template-columns:1fr 1fr; }
-        @media (max-width: 760px) { .opt-overview-diff { grid-template-columns:1fr; } }
+        @media (max-width: 768px) { .opt-overview-diff { grid-template-columns:1fr; } }
       `}</style>
 
       <SummaryBox changes={changes} passCounts={passCounts} net={net} />

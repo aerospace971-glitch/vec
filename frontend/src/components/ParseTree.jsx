@@ -439,7 +439,7 @@ export default function ParseTree({ astData, onNodeSelect, onViewInAST }) {
         .parse-tree-viewport::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
         .parse-detail { position: absolute; top: 58px; right: 12px; width: 300px; max-width: calc(100% - 24px); background: #0d1117; border: 1px solid ${selectedColor}88; border-radius: 8px; box-shadow: 0 18px 40px rgba(0,0,0,.38), 0 0 22px ${selectedColor}22; z-index: 5; }
         .parse-minimap { position: absolute; right: 14px; bottom: 14px; width: 180px; height: 120px; background: rgba(13,17,23,.92); border: 1px solid #1e2a3a; border-radius: 8px; z-index: 4; }
-        @media (max-width: 760px) {
+        @media (max-width: 768px) {
           .parse-tree-viewport { height: 520px; }
           .parse-detail { position: static; width: auto; max-width: none; margin: 12px; }
           .parse-minimap { display: none; }

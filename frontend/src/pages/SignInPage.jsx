@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import MetamicLogo from "../components/MetamicLogo";
+import { useResponsive } from "../hooks/useResponsive";
+import { LAYOUT } from "../constants/responsiveConfig";
 
 const generateCaptcha = () => {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -40,6 +42,7 @@ export default function SignInPage() {
   const navigate = useNavigate();
   const setAuth  = useAuthStore((state) => state.setAuth);
   const user     = useAuthStore((state) => state.user);
+  const { isMobile, device } = useResponsive();
 
   // ── sign-in state ──────────────────────────────────────────────
   const [username,     setUsername]     = useState("");
@@ -84,7 +87,7 @@ export default function SignInPage() {
       setAuth({ user: data.user, token: data.token });
       navigate("/dashboard");
     } catch {
-      setError("Cannot reach server. Start backend on .");
+      setError("Cannot reach server. Check your connection.");
     } finally {
       setLoading(false);
     }
@@ -111,7 +114,7 @@ export default function SignInPage() {
       }
       setFpStep(2);
     } catch {
-      setFpError("Cannot reach server. Start backend on .");
+      setFpError("Cannot reach server. Check your connection.");
     } finally {
       setFpLoading(false);
     }
@@ -137,7 +140,7 @@ export default function SignInPage() {
       setFpDone(true);
       setTimeout(() => backToSignIn(), 2500);
     } catch {
-      setFpError("Cannot reach server. Start backend on .");
+      setFpError("Cannot reach server. Check your connection.");
     } finally {
       setFpLoading(false);
     }
@@ -154,10 +157,10 @@ export default function SignInPage() {
     <div style={{
       height: "100vh", overflowY: "auto", background: "#04030f", color: "#e2eeff",
       display: "flex", alignItems: "flex-start", justifyContent: "center",
-      padding: "40px 24px 24px", fontFamily: "'Space Grotesk',sans-serif",
+      padding: isMobile ? "16px 12px" : "40px 24px 24px", fontFamily: "'Space Grotesk',sans-serif",
     }}>
       <div style={{
-        width: "100%", maxWidth: "460px", padding: "32px", position: "relative",
+        width: "100%", maxWidth: LAYOUT.modalWidth[device], padding: isMobile ? "20px 16px" : "32px", position: "relative",
         borderRadius: "24px", background: "rgba(7,12,28,0.94)",
         border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: "0 40px 120px rgba(0,0,0,0.35)",

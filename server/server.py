@@ -313,7 +313,10 @@ def signin():
         return jsonify({'error': 'Username and password are required.'}), 400
 
     with get_db() as conn:
-        row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        # Support login by username OR email
+        row = conn.execute(
+            'SELECT * FROM users WHERE username = ? OR email = ?', (username, username)
+        ).fetchone()
         if not row:
             return jsonify({'error': 'Invalid username or password.'}), 401
         row = dict(row)
@@ -435,6 +438,63 @@ def auth_send_otp():
             return jsonify({'error': 'Failed to send OTP email. Check SMTP configuration.'}), 500
         return jsonify({'sent': False, 'dev_otp': code})
     return jsonify({'sent': True})
+
+
+@app.route('/auth/forgot-password', methods=['POST'])
+def auth_forgot_password():
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email is required.'}), 400
+    with get_db() as conn:
+        row = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        if not row:
+            return jsonify({'error': 'No account found with that email.'}), 404
+    code = create_otp(email, kind='forgot')
+    subject = 'VEC Password Reset Code'
+    body = f'Your password reset code is: {code}\nIt expires in 5 minutes.'
+    sent = _send_email_smtp(email, subject, body)
+    smtp_enabled = all([
+        os.environ.get('SMTP_HOST'), os.environ.get('SMTP_PORT'),
+        os.environ.get('SMTP_USER'), os.environ.get('SMTP_PASS'),
+    ])
+    if not sent:
+        if smtp_enabled:
+            return jsonify({'error': 'Failed to send reset email. Check SMTP configuration.'}), 500
+        return jsonify({'sent': False, 'dev_otp': code})
+    return jsonify({'sent': True})
+
+
+@app.route('/auth/reset-password', methods=['POST'])
+def auth_reset_password():
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    otp = (data.get('otp') or '').strip()
+    new_password = data.get('newPassword') or ''
+    if not email or not otp or not new_password:
+        return jsonify({'error': 'Email, OTP, and new password are required.'}), 400
+    if len(new_password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters.'}), 400
+    if not verify_otp(email, otp, kind='forgot'):
+        return jsonify({'error': 'Invalid or expired reset code.'}), 400
+    password_hash = hash_password(new_password)
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            'UPDATE users SET password_hash = ? WHERE email = ?', (password_hash, email)
+        )
+        updated = cur.rowcount
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"[reset-password] DB error: {e}")
+        return jsonify({'error': 'Database error during password reset.'}), 500
+    finally:
+        conn.close()
+    if not updated:
+        return jsonify({'error': 'User not found.'}), 404
+    print(f"[reset-password] Password updated for {email}")
+    return jsonify({'ok': True})
 
 
 @app.route('/auth/verify-otp', methods=['POST'])

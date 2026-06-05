@@ -2,17 +2,18 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useRef, useEffect } from "react";
 import useAuthStore from "../store/authStore";
 import MetamicLogo from "./MetamicLogo";
+import { useResponsive } from "../hooks/useResponsive";
 
 const TABS = [
-  { label:"Compiler", path:"/app",       color:"#e2eeff" },
-  { label:"Lexer",    path:"/lexer",     color:"#4488ff" },
-  { label:"Parser",   path:"/parser",    color:"#aa44ff" },
-  { label:"Semantic", path:"/semantic",  color:"#44aaff" },
-  { label:"IR Gen",   path:"/ir",        color:"#44ffaa" },
-  { label:"Optimizer",path:"/optimizer", color:"#ffaa44" },
-  { label:"CodeGen",  path:"/codegen",   color:"#ff4488" },
-  { label:"Runtime",  path:"/runtime",   color:"#ff6b35" },
-  { label:"Let's Build",path:"/build",  color:"#f97316" },
+  { label:"Compiler",    path:"/app",       color:"#e2eeff" },
+  { label:"Lexer",       path:"/lexer",     color:"#4488ff" },
+  { label:"Parser",      path:"/parser",    color:"#aa44ff" },
+  { label:"Semantic",    path:"/semantic",  color:"#44aaff" },
+  { label:"IR Gen",      path:"/ir",        color:"#44ffaa" },
+  { label:"Optimizer",   path:"/optimizer", color:"#ffaa44" },
+  { label:"CodeGen",     path:"/codegen",   color:"#ff4488" },
+  { label:"Runtime",     path:"/runtime",   color:"#ff6b35" },
+  { label:"Let's Build", path:"/build",     color:"#f97316" },
 ];
 
 function UserAvatar({ user, size = 30 }) {
@@ -41,13 +42,16 @@ function UserAvatar({ user, size = 30 }) {
   );
 }
 
-
 export default function Navbar() {
-  const navigate    = useNavigate();
-  const location    = useLocation();
-  const user        = useAuthStore((state) => state.user);
-  const clearAuth   = useAuthStore((state) => state.clearAuth);
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const user         = useAuthStore((state) => state.user);
+  const clearAuth    = useAuthStore((state) => state.clearAuth);
   const activeTabRef = useRef(null);
+  const { isMobile } = useResponsive();
+
+  const currentIndex = TABS.findIndex(t => t.path === location.pathname);
+  const activeTab    = currentIndex >= 0 ? TABS[currentIndex] : null;
 
   useEffect(() => {
     if (activeTabRef.current) {
@@ -55,123 +59,224 @@ export default function Navbar() {
     }
   }, [location.pathname]);
 
+  const navBtnStyle = (disabled) => ({
+    background:   "transparent",
+    border:       `1px solid ${disabled ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
+    borderRadius: "6px",
+    color:        disabled ? "rgba(255,255,255,0.18)" : "#e2eeff",
+    cursor:       disabled ? "not-allowed" : "pointer",
+    fontFamily:   "'JetBrains Mono',monospace",
+    fontSize:     "13px",
+    fontWeight:   700,
+    padding:      "0 10px",
+    height:       "30px",
+    flexShrink:   0,
+    lineHeight:   1,
+    display:      "flex",
+    alignItems:   "center",
+  });
+
   return (
     <nav style={{
-      display:      "flex",
-      alignItems:   "center",
-      height:       "52px",
-      background:   "#04030f",
-      borderBottom: "1px solid rgba(255,255,255,0.06)",
-      flexShrink:   0,
-      position:     "sticky",
-      top:          0,
-      zIndex:       11000,
-      pointerEvents: "auto",
-      paddingLeft:  "20px",
-      overflowX:    "auto",
-      scrollbarWidth:"none",
+      display:       "flex",
+      flexDirection: "column",
+      background:    "#04030f",
+      borderBottom:  "1px solid rgba(255,255,255,0.06)",
+      flexShrink:    0,
+      position:      "sticky",
+      top:           0,
+      zIndex:        11000,
     }}>
       <style>{`.nb-tabs::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Logo */}
-      <div onClick={() => navigate("/")} style={{
+      {/* ── Row 1: Logo + Tabs (desktop) + User buttons ── */}
+      <div style={{
         display:     "flex",
         alignItems:  "center",
-        gap:         "8px",
-        cursor:      "pointer",
-        marginRight: "16px",
-        flexShrink:  0,
+        height:      "52px",
+        paddingLeft: "20px",
+        overflow:    "hidden",
       }}>
-        <MetamicLogo small={true}/>
-        <span style={{
-          fontFamily:    "'Space Grotesk',sans-serif",
-          fontWeight:    700,
-          fontSize:      "16px",
-          color:         "#e2eeff",
-          letterSpacing: "-0.3px",
-        }}>metamic</span>
-      </div>
 
-      {/* Divider */}
-      <div style={{width:1,height:24,background:"rgba(255,255,255,0.08)",marginRight:"8px",flexShrink:0}}/>
+        {/* Logo */}
+        <div onClick={() => navigate("/")} style={{
+          display:     "flex",
+          alignItems:  "center",
+          gap:         "8px",
+          cursor:      "pointer",
+          marginRight: "16px",
+          flexShrink:  0,
+        }}>
+          <MetamicLogo small={true}/>
+          <span style={{
+            fontFamily:    "'Space Grotesk',sans-serif",
+            fontWeight:    700,
+            fontSize:      "16px",
+            color:         "#e2eeff",
+            letterSpacing: "-0.3px",
+          }}>metamic</span>
+        </div>
 
-      {/* Tabs */}
-      <div style={{display:"flex",alignItems:"center",height:"100%",overflowX:"auto"}} className="nb-tabs">
-        {TABS.map(tab => {
-          const active = location.pathname === tab.path;
-          return (
-            <button key={tab.path} ref={active ? activeTabRef : null} onClick={() => navigate(tab.path)} style={{
-              display:      "flex",
-              alignItems:   "center",
-              gap:          "6px",
-              padding:      "0 16px",
-              height:       "52px",
-              background:   "transparent",
-              border:       "none",
-              borderBottom: active ? `2px solid ${tab.color}` : "2px solid transparent",
-              cursor:       "pointer",
-              fontFamily:   "'JetBrains Mono',monospace",
-              fontSize:     "11px",
-              fontWeight:   active ? 700 : 400,
-              color:        active ? tab.color : "rgba(255,255,255,0.35)",
-              transition:   "all 0.15s",
-              whiteSpace:   "nowrap",
-              flexShrink:   0,
-            }}
-            onMouseEnter={e=>{ if(!active) e.currentTarget.style.color="#e2eeff"; }}
-            onMouseLeave={e=>{ if(!active) e.currentTarget.style.color="rgba(255,255,255,0.35)"; }}
-            >
-              <div style={{
-                width:        5, height: 5,
-                borderRadius: "50%",
-                background:   tab.color,
-                opacity:      active ? 1 : 0.35,
-                boxShadow:    active ? `0 0 6px ${tab.color}` : "none",
-                flexShrink:   0,
-              }}/>
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto", paddingRight: "16px", flexShrink: 0 }}>
-        {user ? (
-          <>
-            <UserAvatar user={user} size={30} />
-            <button onClick={() => navigate("/dashboard")} style={{
-              borderRadius: "999px",
-              border: "1px solid rgba(255,255,255,0.12)",
-              padding: "6px 16px",
-              background: "rgba(255,255,255,0.04)",
-              color: "#e2eeff",
-              cursor: "pointer",
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize: "11px",
-            }}>Dashboard</button>
-            <button onClick={() => { clearAuth(); navigate("/"); }} style={{
-              borderRadius: "999px",
-              border: "1px solid rgba(249,115,22,0.4)",
-              padding: "6px 16px",
-              background: "rgba(249,115,22,0.08)",
-              color: "#fbbf24",
-              cursor: "pointer",
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize: "11px",
-            }}>Logout</button>
-          </>
-        ) : (
-          <button onClick={() => navigate("/signin")} style={{
-            borderRadius: "999px",
-            border: "1px solid rgba(255,255,255,0.15)",
-            padding: "6px 20px",
-            background: "rgba(255,255,255,0.06)",
-            color: "#e2eeff",
-            cursor: "pointer",
-            fontFamily: "'JetBrains Mono',monospace",
-            fontSize: "11px",
-          }}>Login</button>
+        {/* Divider */}
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.08)",marginRight:"8px",flexShrink:0}}/>
+
+        {/* Desktop/Tablet: scrollable tabs */}
+        {!isMobile && (
+          <div style={{display:"flex",alignItems:"center",height:"100%",overflowX:"auto",flex:"1 1 0",minWidth:0}} className="nb-tabs">
+            {TABS.map(tab => {
+              const active = location.pathname === tab.path;
+              return (
+                <button
+                  key={tab.path}
+                  ref={active ? activeTabRef : null}
+                  onClick={() => navigate(tab.path)}
+                  style={{
+                    display:      "flex",
+                    alignItems:   "center",
+                    gap:          "6px",
+                    padding:      "0 16px",
+                    height:       "52px",
+                    background:   "transparent",
+                    border:       "none",
+                    borderBottom: active ? `2px solid ${tab.color}` : "2px solid transparent",
+                    cursor:       "pointer",
+                    fontFamily:   "'JetBrains Mono',monospace",
+                    fontSize:     "11px",
+                    fontWeight:   active ? 700 : 400,
+                    color:        active ? tab.color : "rgba(255,255,255,0.35)",
+                    transition:   "all 0.15s",
+                    whiteSpace:   "nowrap",
+                    flexShrink:   0,
+                  }}
+                  onMouseEnter={e=>{ if(!active) e.currentTarget.style.color="#e2eeff"; }}
+                  onMouseLeave={e=>{ if(!active) e.currentTarget.style.color="rgba(255,255,255,0.35)"; }}
+                >
+                  <div style={{
+                    width:5, height:5, borderRadius:"50%",
+                    background:  tab.color,
+                    opacity:     active ? 1 : 0.35,
+                    boxShadow:   active ? `0 0 6px ${tab.color}` : "none",
+                    flexShrink:  0,
+                  }}/>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         )}
+
+        {/* Mobile: spacer */}
+        {isMobile && <div style={{flex:1}}/>}
+
+        {/* User buttons */}
+        <div style={{ display:"flex", alignItems:"center", gap:"8px", paddingLeft:"8px", paddingRight:"16px", flexShrink:0 }}>
+          {user ? (
+            <>
+              <UserAvatar user={user} size={isMobile ? 26 : 30} />
+              {!isMobile && (
+                <button onClick={() => navigate("/dashboard")} style={{
+                  borderRadius:"999px", border:"1px solid rgba(255,255,255,0.12)",
+                  padding:"6px 16px", background:"rgba(255,255,255,0.04)",
+                  color:"#e2eeff", cursor:"pointer",
+                  fontFamily:"'JetBrains Mono',monospace", fontSize:"11px",
+                }}>Dashboard</button>
+              )}
+              {!isMobile && (
+                <button onClick={() => { clearAuth(); navigate("/"); }} style={{
+                  borderRadius:"999px", border:"1px solid rgba(249,115,22,0.4)",
+                  padding:"6px 16px", background:"rgba(249,115,22,0.08)",
+                  color:"#fbbf24", cursor:"pointer",
+                  fontFamily:"'JetBrains Mono',monospace", fontSize:"11px",
+                }}>Logout</button>
+              )}
+              {isMobile && (
+                <button onClick={() => navigate("/dashboard")} style={{
+                  borderRadius:"999px", border:"1px solid rgba(255,255,255,0.12)",
+                  padding:"5px 12px", background:"rgba(255,255,255,0.04)",
+                  color:"#e2eeff", cursor:"pointer",
+                  fontFamily:"'JetBrains Mono',monospace", fontSize:"10px",
+                }}>Dashboard</button>
+              )}
+            </>
+          ) : (
+            <button onClick={() => navigate("/signin")} style={{
+              borderRadius:"999px",
+              border:"1px solid rgba(255,255,255,0.15)",
+              padding: isMobile ? "5px 14px" : "6px 20px",
+              background:"rgba(255,255,255,0.06)",
+              color:"#e2eeff", cursor:"pointer",
+              fontFamily:"'JetBrains Mono',monospace",
+              fontSize:"11px",
+            }}>Login</button>
+          )}
+        </div>
       </div>
+
+      {/* ── Row 2 (mobile only): ← Phase Dropdown → ── */}
+      {isMobile && (
+        <div style={{
+          display:      "flex",
+          alignItems:   "center",
+          height:       "38px",
+          gap:          "8px",
+          paddingLeft:  "12px",
+          paddingRight: "12px",
+          borderTop:    "1px solid rgba(255,255,255,0.05)",
+          background:   "rgba(4,3,15,0.6)",
+        }}>
+
+          {/* ← Prev */}
+          <button
+            style={navBtnStyle(currentIndex <= 0)}
+            onClick={() => { if (currentIndex > 0) navigate(TABS[currentIndex - 1].path); }}
+          >←</button>
+
+          {/* Phase dropdown */}
+          <div style={{ position:"relative", flex:1, minWidth:0 }}>
+            <div style={{
+              position:"absolute", left:"10px", top:"50%", transform:"translateY(-50%)",
+              width:6, height:6, borderRadius:"50%",
+              background:   activeTab?.color || "#4488ff",
+              boxShadow:    `0 0 6px ${activeTab?.color || "#4488ff"}`,
+              pointerEvents:"none", zIndex:1,
+            }}/>
+            <select
+              value={location.pathname}
+              onChange={e => navigate(e.target.value)}
+              style={{
+                width:            "100%",
+                height:           "30px",
+                background:       "rgba(255,255,255,0.04)",
+                border:           `1px solid ${activeTab ? activeTab.color + "55" : "rgba(255,255,255,0.12)"}`,
+                borderRadius:     "8px",
+                color:            activeTab?.color || "#e2eeff",
+                fontFamily:       "'JetBrains Mono',monospace",
+                fontSize:         "11px",
+                fontWeight:       700,
+                paddingLeft:      "22px",
+                paddingRight:     "8px",
+                outline:          "none",
+                cursor:           "pointer",
+                appearance:       "none",
+                WebkitAppearance: "none",
+              }}
+            >
+              {TABS.map(tab => (
+                <option key={tab.path} value={tab.path} style={{ background:"#04030f", color:"#e2eeff" }}>
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* → Next */}
+          <button
+            style={navBtnStyle(currentIndex >= TABS.length - 1)}
+            onClick={() => { if (currentIndex < TABS.length - 1) navigate(TABS[currentIndex + 1].path); }}
+          >→</button>
+
+        </div>
+      )}
     </nav>
   );
 }

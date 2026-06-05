@@ -4,6 +4,7 @@ import useAuthStore from "../store/authStore";
 import AutoTyper   from "../components/AutoTyper";
 import PhaseSlider from "../components/PhaseSlider";
 import MetamicLogo from "../components/MetamicLogo";
+import { useResponsive } from "../hooks/useResponsive";
 
 // ── Simple Hello World typer ───────────────────────────────
 function HelloWorldTyper() {
@@ -377,6 +378,7 @@ export default function LandingPage() {
   const clearAuth  = useAuthStore((state) => state.clearAuth);
   const [splashDone, setSplashDone] = useState(false);
   const [mounted,    setMounted]    = useState(false);
+  const { isMobile, isTablet, isLaptopOrAbove } = useResponsive();
 
   useEffect(()=>{
     if(splashDone) setTimeout(()=>setMounted(true),80);
@@ -384,159 +386,162 @@ export default function LandingPage() {
 
   if(!splashDone) return <SplashScreen onDone={()=>setSplashDone(true)}/>;
 
+  // Responsive values
+  const pH = isMobile ? "16px" : isTablet ? "28px" : "54px"; // horizontal padding
+  const h1Size = isMobile
+    ? "clamp(26px, 7.5vw, 34px)"
+    : isTablet
+    ? "clamp(34px, 5vw, 52px)"
+    : "clamp(64px, 6vw, 100px)";
+  const navH = isMobile ? "52px" : "72px";
+
   return (
     <div style={{
-      height:"100vh",
+      height:"100%",
+      overflowY:"auto",
+      overflowX:"hidden",
       background:"#04030f",
       color:"#e2eeff",
       fontFamily:"'Space Grotesk',sans-serif",
-      overflowX:"hidden",
-      overflowY:"auto",
-      display:"flex",
-      flexDirection:"column",
       position:"relative",
     }}>
 
       {/* Grid BG */}
       <div style={{
-        position:"absolute",inset:0,pointerEvents:"none",
+        position:"fixed",inset:0,pointerEvents:"none",zIndex:0,
         backgroundImage:`linear-gradient(rgba(26,86,219,0.03) 1px,transparent 1px),
           linear-gradient(90deg,rgba(26,86,219,0.03) 1px,transparent 1px)`,
         backgroundSize:"44px 44px",
       }}/>
 
       {/* Glow orbs */}
-        <div style={{
-          position:"absolute",
-          top:"-10%",
-          left:"-5%",
-          width:"700px",
-          height:"700px",
-          borderRadius:"50%",
-          background:"radial-gradient(circle,rgba(80,80,255,0.12),transparent 70%)",
-          filter:"blur(80px)",
-          pointerEvents:"none",
-        }}/>
+      <div style={{
+        position:"fixed",top:"-10%",left:"-5%",
+        width:"700px",height:"700px",borderRadius:"50%",
+        background:"radial-gradient(circle,rgba(80,80,255,0.12),transparent 70%)",
+        filter:"blur(80px)",pointerEvents:"none",zIndex:0,
+      }}/>
+      <div style={{
+        position:"fixed",bottom:"-20%",right:"-10%",
+        width:"650px",height:"650px",borderRadius:"50%",
+        background:"radial-gradient(circle,rgba(255,80,120,0.08),transparent 70%)",
+        filter:"blur(90px)",pointerEvents:"none",zIndex:0,
+      }}/>
 
-        <div style={{
-          position:"absolute",
-          bottom:"-20%",
-          right:"-10%",
-          width:"650px",
-          height:"650px",
-          borderRadius:"50%",
-          background:"radial-gradient(circle,rgba(255,80,120,0.08),transparent 70%)",
-          filter:"blur(90px)",
-          pointerEvents:"none",
-        }}/>
-      {/* ── NAVBAR ── */}
+      {/* ── STICKY NAVBAR ── */}
       <nav style={{
         display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"0 54px",height:"78px",flexShrink:0,
-        background:"rgba(5,8,18,0.8)",backdropFilter:"blur(16px)",
+        paddingLeft:pH, paddingRight:pH, paddingTop:0, paddingBottom:0,
+        height:navH,
+        position:"sticky",top:0,zIndex:100,
+        background:"rgba(5,8,18,0.92)",backdropFilter:"blur(16px)",
         borderBottom:"1px solid rgba(26,86,219,0.1)",
-        position:"relative",zIndex:10,
       }}>
-        {/* Logo small — top LEFT */}
-        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           <MetamicLogo small={true}/>
           <span style={{
             fontFamily:"'Space Grotesk',sans-serif",
-            fontWeight:700,fontSize:"26px",letterSpacing:"-0.5px",
+            fontWeight:700,
+            fontSize: isMobile ? "18px" : "24px",
+            letterSpacing:"-0.5px",
           }}>metamic</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           {!user ? (
             <button onClick={() => navigate("/signin")} style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "#ffffff",
-              borderRadius: "999px",
-              padding: "12px 28px",
-              fontSize: "15px",
-              fontWeight: 600,
-              backdropFilter: "blur(12px)",
-              cursor: "pointer", transition: "all 0.2s",
-            }} onMouseEnter={e=>{e.currentTarget.style.background="#1a56db22";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.03)";}}>
+              background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.08)",
+              color:"#ffffff",borderRadius:"999px",
+              paddingTop: isMobile ? "8px" : "12px",
+              paddingBottom: isMobile ? "8px" : "12px",
+              paddingLeft: isMobile ? "16px" : "28px",
+              paddingRight: isMobile ? "16px" : "28px",
+              fontSize: isMobile ? "13px" : "15px",
+              fontWeight:600,backdropFilter:"blur(12px)",cursor:"pointer",transition:"all 0.2s",
+            }}>
               Login
             </button>
           ) : (
             <>
-              <UserAvatar user={user} size={36} />
+              <UserAvatar user={user} size={isMobile ? 28 : 36} />
               <button onClick={() => navigate("/dashboard")} style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "#e2eeff",
-                borderRadius: "999px",
-                padding: "10px 22px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer", transition: "all 0.2s",
-              }} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.04)";}}>
+                background:"rgba(255,255,255,0.04)",
+                border:"1px solid rgba(255,255,255,0.12)",
+                color:"#e2eeff",borderRadius:"999px",
+                paddingTop: isMobile ? "7px" : "10px",
+                paddingBottom: isMobile ? "7px" : "10px",
+                paddingLeft: isMobile ? "12px" : "22px",
+                paddingRight: isMobile ? "12px" : "22px",
+                fontSize: isMobile ? "12px" : "14px",
+                fontWeight:600,cursor:"pointer",transition:"all 0.2s",
+              }}>
                 Dashboard
               </button>
-              <button onClick={() => { clearAuth(); navigate("/"); }} style={{
-                background: "rgba(249,115,22,0.08)",
-                border: "1px solid rgba(249,115,22,0.4)",
-                color: "#fbbf24",
-                borderRadius: "999px",
-                padding: "10px 22px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer", transition: "all 0.2s",
-              }} onMouseEnter={e=>{e.currentTarget.style.background="rgba(249,115,22,0.16)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(249,115,22,0.08)";}}>
-                Logout
-              </button>
+              {!isMobile && (
+                <button onClick={() => { clearAuth(); navigate("/"); }} style={{
+                  background:"rgba(249,115,22,0.08)",
+                  border:"1px solid rgba(249,115,22,0.4)",
+                  color:"#fbbf24",borderRadius:"999px",
+                  paddingTop:"10px",paddingBottom:"10px",
+                  paddingLeft:"22px",paddingRight:"22px",
+                  fontSize:"14px",fontWeight:600,cursor:"pointer",transition:"all 0.2s",
+                }}>
+                  Logout
+                </button>
+              )}
             </>
           )}
         </div>
       </nav>
 
-      {/* ── HERO (flex: fills remaining height) ── */}
+      {/* ── HERO ── */}
       <div style={{
-        flex:1,
         display:"grid",
-        gridTemplateColumns:"1.1fr 0.9fr",
-        gap:"20px",
-        minHeight:"420px",
-        maxWidth:"15000px",
-        width:"100%",
-        margin:"0 auto",
-        padding:"0 40px",
-        alignItems:"start",
-        paddingTop:"10px",
+        gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.1fr 0.9fr",
+        gap: isTablet ? "16px" : "20px",
+        // fill remaining viewport height only on desktop
+        ...(isLaptopOrAbove ? { minHeight:`calc(100vh - ${navH})` } : {}),
+        alignItems:"center",
+        paddingTop: isMobile ? "20px" : isTablet ? "28px" : "10px",
+        paddingBottom: isMobile ? "28px" : isTablet ? "32px" : "10px",
+        paddingLeft: pH,
+        paddingRight: pH,
         position:"relative",zIndex:1,
       }}>
 
-        {/* LEFT — Text + button */}
+        {/* LEFT — Text + buttons */}
         <div style={{
-          maxWidth:"760",
           opacity:   mounted?1:0,
-          transform: mounted?"translateY(0)":"translateY(28px)",
-          transition:"all 0.8s cubic-bezier(0.22,1,0.36,1)",
+          transform: mounted?"translateY(0)":"translateY(20px)",
+          transition:"all 0.7s cubic-bezier(0.22,1,0.36,1)",
         }}>
+
           {/* Badge */}
           <div style={{
             display:"inline-flex",alignItems:"center",gap:"7px",
             background:"rgba(26,86,219,0.08)",
             border:"1px solid rgba(26,86,219,0.22)",
-            borderRadius:"20px",padding:"4px 13px",marginBottom:"20px",
+            borderRadius:"20px",
+            paddingTop:"4px",paddingBottom:"4px",
+            paddingLeft:"13px",paddingRight:"13px",
+            marginBottom: isMobile ? "10px" : "20px",
           }}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"#4d9fff",
               boxShadow:"0 0 6px #4d9fff",animation:"pulse 2s ease-in-out infinite"}}/>
-            <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",
+            <span style={{fontFamily:"'JetBrains Mono',monospace",
+              fontSize: isMobile ? "9px" : "10px",
               color:"#4d9fff",letterSpacing:"1px"}}>Visual Educational Compiler</span>
           </div>
 
-          {/* Headline */}
+          {/* Headline — fluid size, never overflows viewport */}
           <h1 style={{
             fontFamily:"'Space Grotesk',sans-serif",
-            fontSize:"clamp(72px,7vw,110px)",
+            fontSize: h1Size,
             fontWeight:800,
-            letterSpacing:"-4px",
-            lineHeight:0.95,
-            marginBottom:"24px",
+            letterSpacing: isMobile ? "-1px" : isTablet ? "-2px" : "-4px",
+            lineHeight: isMobile ? 1.05 : 0.95,
+            marginBottom: isMobile ? "10px" : "24px",
             color:"#ffffff",
           }}>
             Transform Code<br/>
@@ -545,100 +550,91 @@ export default function LandingPage() {
               background:"linear-gradient(90deg,#ffb347,#ff8c00)",
               WebkitBackgroundClip:"text",
               WebkitTextFillColor:"transparent",
-            }}>
-              Machine
-            </span>
+            }}>Machine</span>
             <br/>
             <span style={{
-            background:"linear-gradient(90deg,#ff3b3b,#ff1f5a)",
-            WebkitBackgroundClip:"text",
-            WebkitTextFillColor:"transparent",
-          }}>
-            Logic
-          </span>
+              background:"linear-gradient(90deg,#ff3b3b,#ff1f5a)",
+              WebkitBackgroundClip:"text",
+              WebkitTextFillColor:"transparent",
+            }}>Logic</span>
           </h1>
 
+          {/* Description */}
           <p style={{
-            fontSize:"15px",color:"#4a6080",
-            lineHeight:1.7,marginBottom:"32px",
-            maxWidth:"400px",
+            fontSize: isMobile ? "13px" : "15px",
+            color:"#4a6080",
+            lineHeight: isMobile ? 1.5 : 1.7,
+            marginBottom: isMobile ? "18px" : "32px",
+            maxWidth: isMobile ? "340px" : "400px",
           }}>
             Watch every compiler phase come alive — from source
-            tokens to final assembly, all animated and interactive.
+            {isMobile ? " " : <br/>}tokens to final assembly.
           </p>
 
-          {/* CENTER — Let's Compile button */}
-            <div style={{display:"flex",alignItems:"center", gap:"18px", flexWrap:"wrap" }}>
+          {/* CTA Buttons */}
+          <div style={{
+            display:"flex",alignItems:"center",
+            gap: isMobile ? "10px" : "18px",
+            flexWrap:"wrap",
+          }}>
+            <button
+              onClick={()=>navigate("/app")}
+              style={{
+                background:"linear-gradient(135deg,#ff6b2d,#ff8f3f)",
+                border:"1px solid rgba(255,255,255,0.08)",
+                color:"#fff",borderRadius:"999px",
+                paddingTop: isMobile ? "11px" : "16px",
+                paddingBottom: isMobile ? "11px" : "16px",
+                paddingLeft: isMobile ? "20px" : "34px",
+                paddingRight: isMobile ? "20px" : "34px",
+                fontSize: isMobile ? "14px" : "16px",
+                fontWeight:700,
+                boxShadow:"0 10px 40px rgba(255,120,40,0.25)",
+                transition:"all 0.2s",letterSpacing:"-0.3px",
+                display:"flex",alignItems:"center",gap:"6px",cursor:"pointer",
+              }}
+              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.04)";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}
+            >
+              🚀 Let's Compile
+            </button>
 
-              {/* COMPILE */}
-              <button
-                onClick={()=>navigate("/app")}
-                style={{
-                  background:"linear-gradient(135deg,#ff6b2d,#ff8f3f)",
-                  border:"1px solid rgba(255,255,255,0.08)",
-                  color:"#fff",
-                  borderRadius:"999px",
-                  padding:"16px 34px",
-                  fontSize:"16px",
-                  fontWeight:700,
-                  boxShadow:"0 10px 40px rgba(255,120,40,0.25)",
-                  transition:"all 0.2s",
-                  letterSpacing:"-0.3px",
-                  display:"flex",
-                  alignItems:"center",
-                  gap:"8px",
-                }}
-                onMouseEnter={e=>{
-                  e.currentTarget.style.transform="scale(1.04)";
-                }}
-                onMouseLeave={e=>{
-                  e.currentTarget.style.transform="scale(1)";
-                }}
-              >
-                🚀 Let's Compile
-              </button>
-
-              {/* BUILD */}
-              <button
-                onClick={()=>navigate("/build")}
-                style={{
-                  background:"linear-gradient(135deg,#ff2d55,#ff4d6d)",
-                  border:"1px solid rgba(255, 255, 255, 0.1)",
-                  color:"#dbe7ff",
-                  borderRadius:"999px",
-                  padding:"16px 34px",
-                  fontSize:"16px",
-                  fontWeight:700,
-                  boxShadow:"0 10px 40px rgba(0, 0, 0, 0.7)",
-                  transition:"all 0.22s",
-                  letterSpacing:"-0.3px",
-                  display:"flex",
-                  alignItems:"center",
-                  gap:"8px",
-                }}
-                onMouseEnter={e=>{
-                  e.currentTarget.style.transform="translateX(5px)";
-                }}
-                onMouseLeave={e=>{
-                  e.currentTarget.style.transform="translateX(0px)";
-                }}
-              >
-                🛠️ Let's Build
-              </button>
-
-            </div>
-
-         </div> 
-
-        {/* RIGHT — Hello World code */}
-        <div style={{
-          opacity:   mounted?1:0,
-          transform: mounted?"translateY(0)":"translateY(28px)",
-          transition:"all 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s",
-          display:"flex",justifyContent:"center",
-        }}>
-          <HelloWorldTyper/>
+            <button
+              onClick={()=>navigate("/build")}
+              style={{
+                background:"linear-gradient(135deg,#ff2d55,#ff4d6d)",
+                border:"1px solid rgba(255,255,255,0.1)",
+                color:"#dbe7ff",borderRadius:"999px",
+                paddingTop: isMobile ? "11px" : "16px",
+                paddingBottom: isMobile ? "11px" : "16px",
+                paddingLeft: isMobile ? "20px" : "34px",
+                paddingRight: isMobile ? "20px" : "34px",
+                fontSize: isMobile ? "14px" : "16px",
+                fontWeight:700,
+                boxShadow:"0 10px 40px rgba(0,0,0,0.7)",
+                transition:"all 0.22s",letterSpacing:"-0.3px",
+                display:"flex",alignItems:"center",gap:"6px",cursor:"pointer",
+              }}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateX(5px)";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="translateX(0px)";}}
+            >
+              🛠️ Let's Build
+            </button>
+          </div>
         </div>
+
+        {/* RIGHT — Hello World code (hidden on mobile to save height) */}
+        {!isMobile && (
+          <div style={{
+            opacity:   mounted?1:0,
+            transform: mounted?"translateY(0)":"translateY(28px)",
+            transition:"all 0.8s cubic-bezier(0.22,1,0.36,1) 0.12s",
+            display:"flex",justifyContent:"center",
+            ...(isTablet ? {transform:"scale(0.82)",transformOrigin:"top center",marginTop:"8px"} : {}),
+          }}>
+            <HelloWorldTyper/>
+          </div>
+        )}
       </div>
 
       {/* ── PHASE SHOWCASE ── */}
@@ -647,10 +643,13 @@ export default function LandingPage() {
       {/* Built with strip */}
       <div style={{
         borderTop:"1px solid #080c1e",
-        padding:"10px 40px",
-        display:"flex",alignItems:"center",gap:"24px",
+        paddingTop:"10px",paddingBottom:"10px",
+        paddingLeft: isMobile ? "16px" : "40px",
+        paddingRight: isMobile ? "16px" : "40px",
+        display:"flex",alignItems:"center",gap:"16px",
+        flexWrap:"wrap",
         background:"rgba(5,8,18,0.9)",
-        flexShrink:0,position:"relative",zIndex:1,
+        position:"relative",zIndex:1,
       }}>
         <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",
           color:"#1e2d42",letterSpacing:"2px",textTransform:"uppercase"}}>Built with</span>
@@ -662,7 +661,6 @@ export default function LandingPage() {
 
       <style>{`
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
       `}</style>
     </div>
   );

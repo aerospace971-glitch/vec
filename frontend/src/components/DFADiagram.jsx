@@ -350,7 +350,7 @@ export default function DFADiagram({ tokens = [] }) {
         @keyframes dfaDash { to { stroke-dashoffset: -26; } }
         @keyframes dfaAcceptPulse { 50% { stroke-width: 3.2; opacity: 1; } }
         @keyframes dfaNodePulse { 50% { stroke-width: 3; } }
-        @media (max-width: 980px) {
+        @media (max-width: 1024px) {
           .dfa-shell { grid-template-columns: 1fr; grid-template-areas: "graph" "execution" "controls"; }
           .dfa-graph, .dfa-execution { min-height: auto; }
         }

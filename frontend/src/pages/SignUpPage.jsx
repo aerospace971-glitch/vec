@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import useAuthStore from "../store/authStore";
+import { useResponsive } from "../hooks/useResponsive";
+import { LAYOUT } from "../constants/responsiveConfig";
 
 const generateCaptcha = () => {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -11,6 +13,7 @@ export default function SignUpPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
   const user = useAuthStore((state) => state.user);
+  const { isMobile, device } = useResponsive();
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -69,7 +72,11 @@ export default function SignUpPage() {
         return false;
       }
       setShowEmailVerification(true);
-      setMessage("Verification email sent. Enter the OTP and captcha to complete step 1.");
+      if (data.dev_otp) {
+        setMessage(`Dev mode — email not sent. Your OTP: ${data.dev_otp}`);
+      } else {
+        setMessage("Verification email sent. Enter the OTP and captcha to complete step 1.");
+      }
       return true;
     } catch (err) {
       setError("Unable to reach server to send verification email.");
@@ -188,26 +195,30 @@ export default function SignUpPage() {
       setAuth({ user: data.user, token: data.token });
       navigate("/dashboard");
     } catch {
-      setError("Cannot reach server. Start backend on .");
+      setError("Cannot reach server. Check your connection.");
       setLoading(false);
     }
   }
 
   return (
     <div style={{
-      minHeight: "100vh",
+      height: "100vh",
+      overflowY: "auto",
       background: "#04030f",
       color: "#e2eeff",
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "center",
-      padding: "24px",
+      paddingTop: isMobile ? "16px" : "40px",
+      paddingBottom: "24px",
+      paddingLeft: isMobile ? "12px" : "24px",
+      paddingRight: isMobile ? "12px" : "24px",
       fontFamily: "'Space Grotesk',sans-serif",
     }}>
       <div style={{
         width: "100%",
-        maxWidth: "560px",
-        padding: "32px",
+        maxWidth: isMobile ? "100%" : "560px",
+        padding: isMobile ? "20px 16px" : "32px",
         position: "relative",
         borderRadius: "24px",
         background: "rgba(7, 12, 28, 0.94)",

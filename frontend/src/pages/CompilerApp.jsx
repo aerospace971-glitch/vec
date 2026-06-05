@@ -7,6 +7,8 @@ import useAuthStore from "../store/authStore";
 import { TOKEN_COLORS } from "../editor/TokenColors";
 import useCompilerStore from "../store/compilerStore";
 import { useMetamicSettings } from "../utils/metamicSettings";
+import { useResponsive } from "../hooks/useResponsive";
+import { LAYOUT } from "../constants/responsiveConfig";
 import "../App.css";
 
 // ── VFS helpers ────────────────────────────────────────────
@@ -58,6 +60,7 @@ export default function CompilerApp() {
   const monaco = useMonaco();
   const [editorReady, setEditorReady] = useState(false);
   const navigate  = useNavigate();
+  const { isMobile, isTablet, device } = useResponsive();
   const { source, setSource, errors, setErrors, compiled, setCompiled, setResult } = useCompilerStore();
   const editorSettings = useMetamicSettings();
   const [loading,     setLoading]     = useState(false);
@@ -394,31 +397,35 @@ export default function CompilerApp() {
 
       <Navbar />
 
-      {/* ── Toolbar strip (unchanged) ── */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 20px", background:"rgba(5,8,18,0.9)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px", fontFamily:"'JetBrains Mono',monospace", fontSize:"10px", letterSpacing:"1.5px", color:"#3a5070", textTransform:"uppercase" }}>
-          <div style={{ width:6, height:6, borderRadius:"50%", background:"#06ffa5", boxShadow:"0 0 5px #06ffa5", animation:"pulse 2s ease-in-out infinite" }}/>
-          Source — C++
+      {/* ── Toolbar strip ── */}
+      <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? "0" : "8px", padding: isMobile ? "6px 12px" : "8px 20px", background:"rgba(5,8,18,0.9)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+
+        {/* Row 1 (mobile) / Left (desktop): Status */}
+        <div style={{ display:"flex", alignItems:"center", gap:"8px", paddingBottom: isMobile ? "5px" : 0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"6px", fontFamily:"'JetBrains Mono',monospace", fontSize:"10px", letterSpacing:"1.5px", color:"#3a5070", textTransform:"uppercase", flexShrink:0 }}>
+            <div style={{ width:6, height:6, borderRadius:"50%", background:"#06ffa5", boxShadow:"0 0 5px #06ffa5", animation:"pulse 2s ease-in-out infinite" }}/>
+            Source — C++
+          </div>
           {compiled && (
-            <span style={{ marginLeft:"12px", fontFamily:"'JetBrains Mono',monospace", fontSize:"10px", color:"#06ffa5", background:"rgba(6,255,165,0.08)", border:"1px solid rgba(6,255,165,0.2)", borderRadius:"4px", padding:"2px 8px", letterSpacing:"0.5px" }}>
-              ✓ Compiled — open any phase tab
+            <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:"10px", color:"#06ffa5", background:"rgba(6,255,165,0.08)", border:"1px solid rgba(6,255,165,0.2)", borderRadius:"4px", padding:"2px 8px", letterSpacing:"0.5px", whiteSpace:"nowrap" }}>
+              ✓ Compiled
             </span>
           )}
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:"14px", width:"100%", justifyContent:"space-between" }}>
+
+        {/* Row 2 (mobile) / Right (desktop): Actions */}
+        <div style={{ display:"flex", alignItems:"center", gap:"8px", marginLeft: isMobile ? 0 : "auto" }}>
           <Toolbar onCompile={compile} onLoadExample={loadExample} examples={Object.keys(EXAMPLES)} loading={loading} disabled={!canCompile} />
-          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-            <button onClick={openSaveModal} disabled={!user} style={{ borderRadius:"999px", border:"1px solid rgba(255,255,255,0.14)", background: user ? "#10b981" : "rgba(255,255,255,0.04)", color: user ? "#ffffff" : "rgba(255,255,255,0.6)", padding:"10px 18px", cursor: user ? "pointer" : "not-allowed", fontFamily:"'JetBrains Mono',monospace", fontSize:"11px" }}>
-              Save File
-            </button>
-            <span style={{ fontSize:"12px", color:"#94a3b8" }}>{saveMessage}</span>
-          </div>
+          <button onClick={openSaveModal} disabled={!user} style={{ borderRadius:"999px", border:"1px solid rgba(255,255,255,0.14)", background: user ? "#10b981" : "rgba(255,255,255,0.04)", color: user ? "#ffffff" : "rgba(255,255,255,0.6)", padding: isMobile ? "7px 12px" : "10px 18px", cursor: user ? "pointer" : "not-allowed", fontFamily:"'JetBrains Mono',monospace", fontSize:"11px", whiteSpace:"nowrap", flexShrink:0 }}>
+            {isMobile ? "Save" : "Save File"}
+          </button>
+          {saveMessage && <span style={{ fontSize:"12px", color:"#94a3b8", whiteSpace:"nowrap" }}>{saveMessage}</span>}
         </div>
       </div>
 
       {/* ── Sub-toolbar: file system ── */}
       {user && (
-        <div style={{ display:"flex", alignItems:"center", height:32, background:"#06091a", borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0, paddingLeft:6, gap:2 }}>
+        <div style={{ display:"flex", alignItems:"center", height:32, background:"#06091a", borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0, paddingLeft:6, gap:2, overflowX:"auto", scrollbarWidth:"none" }}>
           <button onClick={() => setShowExplorer(p => !p)} style={SB(showExplorer)} title="Toggle Explorer">☰</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,0.08)", margin:"0 3px" }}/>
           <button onClick={newTab}                         style={SB(false)}>New File</button>
@@ -428,11 +435,14 @@ export default function CompilerApp() {
         </div>
       )}
 
-      {/* ── Guest banner (unchanged) ── */}
+      {/* ── Guest banner ── */}
       {!user && (
-        <div style={{ padding:"16px 20px", color:"#f8fafc", background:"#111827", borderBottom:"1px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px" }}>
-          <div><strong style={{color:"#bae6fd"}}>Guest mode active:</strong> only example code is available. Sign in to edit, compile, and save your own source.</div>
-          <button onClick={() => navigate("/signin")} style={{ borderRadius:"999px", border:"1px solid rgba(56,189,248,0.4)", background:"rgba(56,189,248,0.12)", color:"#7dd3fc", padding:"10px 18px", cursor:"pointer", fontFamily:"'JetBrains Mono',monospace", fontSize:"12px" }}>Sign In</button>
+        <div style={{ padding: isMobile ? "10px 12px" : "16px 20px", color:"#f8fafc", background:"#111827", borderBottom:"1px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", flexWrap:"wrap" }}>
+          <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
+            <strong style={{color:"#bae6fd"}}>Guest mode{isMobile ? "" : " active"}:</strong>{" "}
+            {isMobile ? "Examples only — sign in to compile custom code." : "only example code is available. Sign in to edit, compile, and save your own source."}
+          </div>
+          <button onClick={() => navigate("/signin")} style={{ borderRadius:"999px", border:"1px solid rgba(56,189,248,0.4)", background:"rgba(56,189,248,0.12)", color:"#7dd3fc", padding: isMobile ? "7px 14px" : "10px 18px", cursor:"pointer", fontFamily:"'JetBrains Mono',monospace", fontSize:"12px", flexShrink:0 }}>Sign In</button>
         </div>
       )}
 
@@ -440,8 +450,8 @@ export default function CompilerApp() {
       <div style={{ flex:1, overflow:"hidden", display:"flex", background:"#04030f" }}>
 
         {/* Explorer sidebar */}
-        {showExplorer && user && (
-          <div style={{ width:220, background:"#040610", borderRight:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden" }}>
+        {showExplorer && user && !isMobile && (
+          <div style={{ width: LAYOUT.explorerWidth[device] ?? 220, background:"#040610", borderRight:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden" }}>
             {/* Collapsible EXPLORER header */}
             <div
               onClick={() => setExplorerOpen(p => !p)}

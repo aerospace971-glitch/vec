@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useResponsive } from "../../hooks/useResponsive";
 
 export default function TheoryPanel({ phase, activeTab, setActiveTab }) {
+  const { isMobile } = useResponsive();
   const [activeFile, setActiveFile] = useState(0);
 
   // Reset file tab when phase changes
@@ -11,89 +13,61 @@ export default function TheoryPanel({ phase, activeTab, setActiveTab }) {
       display:       "flex",
       flexDirection: "column",
       overflow:      "hidden",
-      height:"100%",
+      height:        "100%",
+      minHeight:     0,
     }}>
-      {/* ── Phase title ─────────────────────────────── */}
+
+      {/* ── What / Overview ─────────────────────────── */}
       <div style={{
-        padding:      "16px 20px",
+        padding:      "14px 20px",
         borderBottom: `1px solid ${phase.color}22`,
         flexShrink:   0,
       }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"6px" }}>
-          <span style={{
-            fontSize: "24px",
-            color:    phase.color,
-            filter:   `drop-shadow(0 0 8px ${phase.color})`,
-          }}>
-            {phase.icon}
-          </span>
-          <div>
-            <div style={{
-              fontFamily: "'Space Grotesk',sans-serif",
-              fontSize:   "16px",
-              fontWeight: 700,
-              color:      "#fff",
-            }}>
-              {phase.label}
-            </div>
-            <div style={{
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize:   "10px",
-              color:      phase.color,
-              opacity:    0.7,
-            }}>
-              {phase.tagline}
-            </div>
-          </div>
-        </div>
-
         <p style={{
           fontFamily: "'Space Grotesk',sans-serif",
           fontSize:   "12px",
-          color:      "rgba(255,255,255,0.5)",
-          lineHeight: 1.6,
+          color:      "rgba(255,255,255,0.55)",
+          lineHeight: 1.65,
           margin:     0,
         }}>
           {phase.theory.what}
         </p>
       </div>
 
-      {/* ── Sub tabs ──────────────────────────────────── */}
-      <div style={{
-        display:     "flex",
-        borderBottom:"1px solid rgba(255,255,255,0.05)",
-        flexShrink:  0,
-      }}>
-        {[
-          { id:"structure", label:"📋 Structure" },
-          { id:"steps",     label:"📍 Steps"     },
-          { id:"tips",      label:"💡 Tips"      },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); if (tab.id === "structure") setActiveFile(0); }}
-            style={{
-              flex:        1,
-              padding:     "10px",
-              background:  "transparent",
-              border:      "none",
-              borderBottom: activeTab === tab.id
-                ? `2px solid ${phase.color}`
-                : "2px solid transparent",
-              color: activeTab === tab.id
-                ? phase.color
-                : "rgba(255,255,255,0.3)",
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize:   "10px",
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              cursor:     "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* ── Sub tabs — desktop only (mobile: BuildPage owns section nav) ── */}
+      {!isMobile && (
+        <div style={{
+          display:     "flex",
+          borderBottom:"1px solid rgba(255,255,255,0.05)",
+          flexShrink:  0,
+        }}>
+          {[
+            { id:"structure", label:"📋 Structure" },
+            { id:"steps",     label:"📍 Steps"     },
+            { id:"tips",      label:"💡 Tips"      },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); if (tab.id === "structure") setActiveFile(0); }}
+              style={{
+                flex:         1,
+                padding:      "10px",
+                background:   "transparent",
+                border:       "none",
+                borderBottom: activeTab === tab.id ? `2px solid ${phase.color}` : "2px solid transparent",
+                color:        activeTab === tab.id ? phase.color : "rgba(255,255,255,0.3)",
+                fontFamily:   "'JetBrains Mono',monospace",
+                fontSize:     "10px",
+                fontWeight:   activeTab === tab.id ? 700 : 400,
+                cursor:       "pointer",
+                transition:   "all 0.15s",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Tab content ───────────────────────────────── */}
       <div style={{

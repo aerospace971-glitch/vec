@@ -171,14 +171,14 @@ export default function OptimizerImpact({
       <style>{`
         .oi-bar { width:0%; transition:width 600ms ease-out; }
         .oi-mounted .oi-bar { width:var(--target-width); }
-        @media (max-width: 760px) {
+        @media (max-width: 768px) {
           .oi-stats { grid-template-columns:1fr 1fr; }
           .oi-pass-row { grid-template-columns:1fr; gap:6px; }
           .oi-mix-row { grid-template-columns:90px 1fr; }
           .oi-mix-after { grid-column:2; }
           .oi-mix-indicator { grid-column:2; text-align:left; }
         }
-        @media (max-width: 520px) { .oi-stats { grid-template-columns:1fr; } }
+        @media (max-width: 414px) { .oi-stats { grid-template-columns:1fr; } }
       `}</style>
       <div className={mounted ? "oi-mounted" : ""} style={styles.content}>
         <section className="oi-stats" style={styles.statsGrid}>

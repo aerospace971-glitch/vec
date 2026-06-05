@@ -1,0 +1,129 @@
+/* ═══════════════════════════════════════════════
+   RESPONSIVE DESIGN SYSTEM — METAMIC
+   Single source of truth for all breakpoints,
+   spacing, typography, and layout tokens.
+═══════════════════════════════════════════════ */
+
+:root {
+  /* ── Spacing scale (4px base) ── */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 48px;
+
+  /* ── Typography — clamp for fluid scaling ── */
+  --font-xs:  clamp(10px, 1.2vw, 11px);
+  --font-sm:  clamp(11px, 1.4vw, 13px);
+  --font-md:  clamp(13px, 1.6vw, 15px);
+  --font-lg:  clamp(16px, 2vw,   20px);
+  --font-xl:  clamp(20px, 2.5vw, 28px);
+  --font-2xl: clamp(28px, 4vw,   48px);
+
+  /* ── Layout tokens — desktop defaults ── */
+  --sidebar-width:   200px;
+  --navbar-height:   52px;
+  --explorer-width:  220px;
+  --container-width: 1200px;
+  --modal-width:     460px;
+
+  /* ── Breakpoint reference (for JS consumers) ── */
+  --bp-mobile:    768px;
+  --bp-tablet:    1024px;
+  --bp-laptop:    1366px;
+  --bp-desktop:   1920px;
+}
+
+/* ── Tablet overrides ── */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width:   48px;
+    --explorer-width:  180px;
+    --container-width: 768px;
+  }
+}
+
+/* ── Mobile overrides ── */
+@media (max-width: 767px) {
+  :root {
+    --sidebar-width:   0px;
+    --navbar-height:   48px;
+    --explorer-width:  0px;
+    --container-width: 100%;
+    --modal-width:     calc(100vw - 32px);
+    --spacing-lg:      16px;
+    --spacing-xl:      24px;
+    --spacing-2xl:     32px;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Utility classes
+───────────────────────────────────────────── */
+
+/* Centered max-width wrapper */
+.responsive-container {
+  width: 100%;
+  max-width: var(--container-width);
+  margin-inline: auto;
+  padding-inline: var(--spacing-md);
+}
+
+/* Auto-responsive grid: 1→2→3 columns */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1366px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1920px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Hide on mobile */
+.hide-mobile {
+  display: initial;
+}
+
+@media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Hide on tablet and below */
+.hide-tablet {
+  display: initial;
+}
+
+@media (max-width: 1023px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* Show only on mobile */
+.show-mobile {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .show-mobile {
+    display: initial !important;
+  }
+}

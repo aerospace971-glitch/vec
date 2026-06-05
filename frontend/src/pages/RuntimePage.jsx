@@ -5,6 +5,7 @@ import PanelWindow from "../components/PanelWindow";
 import LivePanelWindow from "../components/LivePanelWindow";
 import useCompilerStore from "../store/compilerStore";
 import { downloadRuntime_JSON, downloadRuntime_LOG } from "../downloads";
+import { useResponsive } from "../hooks/useResponsive";
 
 // ── VRM Engine ────────────────────────────────────────────────────
 
@@ -663,6 +664,7 @@ export default function RuntimePage() {
   const navigate  = useNavigate();
   const result    = useCompilerStore((state) => state.result);
   const compiled  = useCompilerStore((state) => state.compiled);
+  const { isMobile, isTablet } = useResponsive();
 
   // Block runtime if any upstream phase has hard errors (includes fatal warnings)
   const runtimeBlocker = (() => {
@@ -1210,7 +1212,7 @@ export default function RuntimePage() {
         )}
 
         {/* ── Main grid: Assembly (L) + Right column ───────────── */}
-        <div style={{ display:"grid", gridTemplateColumns:"1.25fr 0.75fr", gap:"14px", alignItems:"start" }}>
+        <div style={{ display:"grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.25fr 0.75fr", gap:"14px", alignItems:"start" }}>
 
           {/* Assembly Instructions Panel — PanelWindow wrapper */}
           <div style={{ borderRadius:"20px", border:"1px solid rgba(255,255,255,0.08)", background:"rgba(10,16,32,0.95)", overflow:"hidden", height:"520px" }}>
@@ -1343,7 +1345,7 @@ export default function RuntimePage() {
         </div>
 
         {/* ── Bottom grid: Output (L) + Timeline (R) ───────────── */}
-        <div style={{ display:"grid", gridTemplateColumns:"0.75fr 1.25fr", gap:"14px" }}>
+        <div style={{ display:"grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "0.75fr 1.25fr", gap:"14px" }}>
 
           {/* Program Output Panel — PanelWindow wrapper */}
           <div style={{ borderRadius:"20px", border:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.65)", overflow:"hidden" }}>
