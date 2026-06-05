@@ -152,10 +152,15 @@ def _send_email_smtp(to_email: str, subject: str, body: str) -> bool:
         msg['Subject'] = subject
         msg.set_content(body)
 
-        with smtplib.SMTP(host, port, timeout=10) as s:
-            s.starttls()
-            s.login(user, password)
-            s.send_message(msg)
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as s:
+                s.login(user, password)
+                s.send_message(msg)
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                s.starttls()
+                s.login(user, password)
+                s.send_message(msg)
         print(f"[OTP] Email sent to {to_email} via SMTP host={host} user={user}")
         return True
     except Exception as exc:
