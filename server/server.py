@@ -159,7 +159,7 @@ def _send_email_smtp(to_email: str, subject: str, body: str) -> bool:
         print(f"[OTP] Email sent to {to_email} via SMTP host={host} user={user}")
         return True
     except Exception as exc:
-        print(f"[OTP] Email send failed for {to_email}: {exc}")
+        print("SMTP ERROR =", repr(exc))
         return False
 
 
