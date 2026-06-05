@@ -833,6 +833,9 @@ def execute_vrm():
 if __name__ == '__main__':
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     init_db()
+    with get_db() as conn:
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    print("TABLES =", tables, flush=True)
     print("=" * 50)
     print("  VEC Bridge Server")
     print("=" * 50)
