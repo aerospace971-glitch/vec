@@ -133,38 +133,22 @@ def get_user_by_token(token: str):
         return dict(row) if row else None
 
 
-def _send_email_smtp(to_email: str, subject: str, body: str) -> bool:
-    import smtplib
-    from email.message import EmailMessage
+import resend
 
-    host = os.environ.get('SMTP_HOST')
-    port = int(os.environ.get('SMTP_PORT', '0') or 0)
-    user = os.environ.get('SMTP_USER')
-    password = os.environ.get('SMTP_PASS')
+resend.api_key = os.environ.get("RESEND_API_KEY")
 
-    if not host or not port or not user or not password:
-        return False
-
+def _send_email(to_email: str, subject: str, body: str) -> bool:
     try:
-        msg = EmailMessage()
-        msg['From'] = user
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.set_content(body)
-
-        if port == 465:
-            with smtplib.SMTP_SSL(host, port, timeout=15) as s:
-                s.login(user, password)
-                s.send_message(msg)
-        else:
-            with smtplib.SMTP(host, port, timeout=15) as s:
-                s.starttls()
-                s.login(user, password)
-                s.send_message(msg)
-        print(f"[OTP] Email sent to {to_email} via SMTP host={host} user={user}")
+        resend.Emails.send({
+            "from": os.environ.get("EMAIL_FROM", "onboarding@resend.dev"),
+            "to": [to_email],
+            "subject": subject,
+            "text": body,
+        })
+        print(f"[OTP] Email sent to {to_email}", flush=True)
         return True
     except Exception as exc:
-        print("SMTP ERROR =", repr(exc))
+        print("RESEND ERROR =", repr(exc), flush=True)
         return False
 
 
@@ -432,7 +416,7 @@ def auth_send_otp():
 
         print("OTP CREATED", flush=True)
 
-        sent = _send_email_smtp(
+        sent = _send_email(
             email,
             "Your VEC verification code",
             f"Code: {code}"
@@ -460,15 +444,11 @@ def auth_forgot_password():
     code = create_otp(email, kind='forgot')
     subject = 'VEC Password Reset Code'
     body = f'Your password reset code is: {code}\nIt expires in 5 minutes.'
-    sent = _send_email_smtp(email, subject, body)
-    smtp_enabled = all([
-        os.environ.get('SMTP_HOST'), os.environ.get('SMTP_PORT'),
-        os.environ.get('SMTP_USER'), os.environ.get('SMTP_PASS'),
-    ])
+    sent = _send_email(email, subject, body)
     if not sent:
-        if smtp_enabled:
-            return jsonify({'error': 'Failed to send reset email. Check SMTP configuration.'}), 500
-        return jsonify({'sent': False, 'dev_otp': code})
+        if not os.environ.get("RESEND_API_KEY"):
+            return jsonify({'sent': False, 'dev_otp': code})
+        return jsonify({'error': 'Failed to send reset email. Check RESEND_API_KEY.'}), 500
     return jsonify({'sent': True})
 
 
